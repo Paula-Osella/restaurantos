@@ -1,0 +1,320 @@
+---
+import Base from '@/layouts/Base.astro'
+
+const products = [
+  {
+    id: 'restaurantos',
+    href: '/restaurantos',
+    emoji: '🍔',
+    color: 'violet',
+    tag: 'Disponible ahora',
+    tagColor: 'emerald',
+    name: 'RestaurantOS',
+    tagline: 'Sistema de gestión para restaurantes y hamburgueserías',
+    desc: 'POS, cocina en tiempo real, inventario, reportes, multi-sucursal y cobros con Mercado Pago. Todo en un solo sistema.',
+    features: ['Punto de venta (POS)', 'Pantalla de cocina', 'Inventario y stock', 'Reportes de ventas'],
+    from: '$29.000 ARS/mes',
+  },
+  {
+    id: 'clinicos',
+    href: '#',
+    emoji: '🏥',
+    color: 'teal',
+    tag: 'Próximamente',
+    tagColor: 'slate',
+    name: 'ClinicOS',
+    tagline: 'Gestión de clínicas y consultorios médicos',
+    desc: 'Turnos online, historial clínico, facturación médica, obras sociales y comunicación con pacientes.',
+    features: ['Agenda de turnos', 'Historia clínica digital', 'Facturación médica', 'Recordatorios automáticos'],
+    from: null,
+  },
+  {
+    id: 'tallerios',
+    href: '#',
+    emoji: '🔧',
+    color: 'amber',
+    tag: 'Próximamente',
+    tagColor: 'slate',
+    name: 'TallerOS',
+    tagline: 'Sistema para talleres mecánicos y servicios técnicos',
+    desc: 'Órdenes de trabajo, presupuestos, stock de repuestos, historial de vehículos y notificaciones al cliente.',
+    features: ['Órdenes de trabajo', 'Presupuestos digitales', 'Stock de repuestos', 'Historial de vehículos'],
+    from: null,
+  },
+  {
+    id: 'gymOS',
+    href: '#',
+    emoji: '💪',
+    color: 'coral',
+    tag: 'Próximamente',
+    tagColor: 'slate',
+    name: 'GymOS',
+    tagline: 'Administración de gimnasios y centros deportivos',
+    desc: 'Control de socios, clases grupales, cobros recurrentes, control de acceso y seguimiento de rutinas.',
+    features: ['Gestión de socios', 'Clases y turnos', 'Cobros automáticos', 'Control de acceso'],
+    from: null,
+  },
+  {
+    id: 'hotelosys',
+    href: '#',
+    emoji: '🏨',
+    color: 'blue',
+    tag: 'Próximamente',
+    tagColor: 'slate',
+    name: 'HotelOS',
+    tagline: 'Software de gestión hotelera y alojamientos',
+    desc: 'Reservas, check-in/out, housekeeping, facturación y canal manager para publicar en múltiples plataformas.',
+    features: ['Reservas y disponibilidad', 'Check-in / check-out', 'Housekeeping', 'Canal manager'],
+    from: null,
+  },
+  {
+    id: 'peluquerios',
+    href: '#',
+    emoji: '✂️',
+    color: 'pink',
+    tag: 'Próximamente',
+    tagColor: 'slate',
+    name: 'SalonOS',
+    tagline: 'Para peluquerías, barberías y centros de estética',
+    desc: 'Turnos online, comisiones por empleado, productos y ventas, fidelización de clientes y recordatorios.',
+    features: ['Agenda online', 'Comisiones de empleados', 'Ventas de productos', 'Fidelización de clientes'],
+    from: null,
+  },
+]
+
+const colorMap: Record<string, { border: string; bg: string; tag: string; icon: string; badge: string }> = {
+  violet: {
+    border: 'border-violet-500/40',
+    bg: 'hover:bg-violet-500/5',
+    tag: 'bg-violet-500/15 text-violet-300 border-violet-500/25',
+    icon: 'bg-violet-500/20 text-violet-400',
+    badge: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/25',
+  },
+  teal: {
+    border: 'border-teal-500/20',
+    bg: 'hover:bg-teal-500/5',
+    tag: 'bg-teal-500/15 text-teal-300 border-teal-500/25',
+    icon: 'bg-teal-500/20 text-teal-400',
+    badge: 'bg-slate-700 text-slate-400 border border-slate-600',
+  },
+  amber: {
+    border: 'border-amber-500/20',
+    bg: 'hover:bg-amber-500/5',
+    tag: 'bg-amber-500/15 text-amber-300 border-amber-500/25',
+    icon: 'bg-amber-500/20 text-amber-400',
+    badge: 'bg-slate-700 text-slate-400 border border-slate-600',
+  },
+  coral: {
+    border: 'border-orange-500/20',
+    bg: 'hover:bg-orange-500/5',
+    tag: 'bg-orange-500/15 text-orange-300 border-orange-500/25',
+    icon: 'bg-orange-500/20 text-orange-400',
+    badge: 'bg-slate-700 text-slate-400 border border-slate-600',
+  },
+  blue: {
+    border: 'border-blue-500/20',
+    bg: 'hover:bg-blue-500/5',
+    tag: 'bg-blue-500/15 text-blue-300 border-blue-500/25',
+    icon: 'bg-blue-500/20 text-blue-400',
+    badge: 'bg-slate-700 text-slate-400 border border-slate-600',
+  },
+  pink: {
+    border: 'border-pink-500/20',
+    bg: 'hover:bg-pink-500/5',
+    tag: 'bg-pink-500/15 text-pink-300 border-pink-500/25',
+    icon: 'bg-pink-500/20 text-pink-400',
+    badge: 'bg-slate-700 text-slate-400 border border-slate-600',
+  },
+}
+---
+
+<Base title="SaaS Argentina — Plataforma de sistemas de gestión">
+  <div class="min-h-screen bg-slate-950 text-white">
+
+    <!-- Nav -->
+    <header class="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-white/5">
+      <nav class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 bg-gradient-to-br from-violet-600 to-violet-800 rounded-xl flex items-center justify-center shadow-lg">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+          </div>
+          <div>
+            <span class="font-bold text-white text-base tracking-tight">SaaSAR</span>
+            <span class="hidden sm:inline text-xs text-slate-500 ml-2">Plataforma de sistemas SaaS</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <a href="/login" class="text-sm text-slate-400 hover:text-white transition-colors hidden sm:block">Iniciar sesión</a>
+          <a href="#productos" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold rounded-xl transition-all active:scale-95">
+            Ver sistemas
+          </a>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Hero -->
+    <section class="max-w-5xl mx-auto px-6 pt-24 pb-20 text-center">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 bg-violet-500/10 border border-violet-500/20 rounded-full text-violet-300 text-xs font-medium mb-8">
+        <span class="w-1.5 h-1.5 bg-violet-400 rounded-full animate-pulse"></span>
+        Plataforma SaaS hecha en Argentina
+      </div>
+
+      <h1 class="text-5xl md:text-6xl font-bold tracking-tight mb-6 leading-[1.08]">
+        El software que cada
+        <br />
+        <span class="text-slate-400">negocio argentino</span> necesita
+      </h1>
+
+      <p class="text-lg text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+        Sistemas de gestión especializados por industria. Simples, rápidos y con
+        cobros integrados via <strong class="text-white font-medium">Mercado Pago</strong>.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-8 text-sm text-slate-500">
+        {[
+          { n: '6', label: 'sistemas SaaS' },
+          { n: '14 días', label: 'de prueba gratis' },
+          { n: '100%', label: 'hecho en Argentina' },
+          { n: 'MP', label: 'pagos integrados' },
+        ].map(s => (
+          <div class="text-center">
+            <p class="text-2xl font-bold text-white mb-0.5">{s.n}</p>
+            <p class="text-xs text-slate-500">{s.label}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- Products grid -->
+    <section id="productos" class="max-w-7xl mx-auto px-6 pb-28">
+
+      <div class="flex items-center gap-3 mb-10">
+        <h2 class="text-xl font-bold text-white">Todos los sistemas</h2>
+        <span class="text-xs text-slate-500 bg-slate-800 px-2.5 py-1 rounded-full">{products.length} disponibles</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        {products.map(p => {
+          const c = colorMap[p.color]
+          const isAvailable = p.href !== '#'
+          return (
+            <a
+              href={p.href}
+              class={`group relative flex flex-col bg-slate-900 border ${c.border} rounded-2xl p-6 transition-all duration-200 ${c.bg} ${isAvailable ? 'cursor-pointer hover:scale-[1.015] hover:shadow-2xl hover:shadow-black/40' : 'cursor-default opacity-70'}`}
+            >
+              <!-- Tag -->
+              <div class="flex items-center justify-between mb-5">
+                <div class={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${c.icon}`}>
+                  {p.emoji}
+                </div>
+                <span class={`text-xs font-semibold px-2.5 py-1 rounded-full ${p.tagColor === 'emerald' ? c.badge : 'bg-slate-800 text-slate-500 border border-slate-700'}`}>
+                  {p.tag}
+                </span>
+              </div>
+
+              <!-- Info -->
+              <div class="flex-1">
+                <h3 class="text-lg font-bold text-white mb-1 group-hover:text-violet-300 transition-colors">
+                  {p.name}
+                </h3>
+                <p class="text-xs font-medium text-slate-400 mb-3">{p.tagline}</p>
+                <p class="text-sm text-slate-500 leading-relaxed mb-5">{p.desc}</p>
+
+                <!-- Feature bullets -->
+                <ul class="space-y-1.5 mb-6">
+                  {p.features.map(f => (
+                    <li class="flex items-center gap-2 text-xs text-slate-400">
+                      <svg class="w-3.5 h-3.5 text-slate-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                      </svg>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <!-- Footer -->
+              <div class="flex items-center justify-between border-t border-white/5 pt-4">
+                {p.from ? (
+                  <div>
+                    <p class="text-xs text-slate-500">Desde</p>
+                    <p class="text-sm font-bold text-white">{p.from}</p>
+                  </div>
+                ) : (
+                  <p class="text-xs text-slate-600 italic">Precios próximamente</p>
+                )}
+
+                {isAvailable ? (
+                  <span class="flex items-center gap-1.5 text-xs font-semibold text-violet-400 group-hover:text-violet-300 transition-colors">
+                    Ver sistema
+                    <svg class="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                  </span>
+                ) : (
+                  <span class="text-xs text-slate-600">Próximamente</span>
+                )}
+              </div>
+            </a>
+          )
+        })}
+      </div>
+    </section>
+
+    <!-- Why us -->
+    <section class="border-t border-white/5 bg-slate-900/50 py-20">
+      <div class="max-w-6xl mx-auto px-6">
+        <div class="text-center mb-14">
+          <h2 class="text-2xl font-bold text-white mb-3">¿Por qué elegir SaaSAR?</h2>
+          <p class="text-slate-400 max-w-lg mx-auto text-sm">Construido específicamente para el mercado argentino, con las herramientas que los negocios locales necesitan.</p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {[
+            { icon: '🇦🇷', title: 'Hecho en Argentina',    desc: 'Diseñado para el mercado local. Pesos argentinos, AFIP y normativa vigente.' },
+            { icon: '💳', title: 'Mercado Pago nativo',   desc: 'Cobros con tarjeta, débito y saldo MP. Sin complicaciones de integración.' },
+            { icon: '🔒', title: 'Datos aislados',         desc: 'Cada negocio tiene sus datos completamente separados con Row Level Security.' },
+            { icon: '⚡', title: '14 días gratis',         desc: 'Probá el sistema sin tarjeta de crédito. Cancelá cuando quieras.' },
+          ].map(w => (
+            <div class="bg-slate-800/50 border border-white/5 rounded-2xl p-5">
+              <div class="text-3xl mb-4">{w.icon}</div>
+              <h3 class="text-sm font-semibold text-white mb-2">{w.title}</h3>
+              <p class="text-xs text-slate-400 leading-relaxed">{w.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA final -->
+    <section class="max-w-3xl mx-auto px-6 py-28 text-center">
+      <h2 class="text-3xl font-bold text-white mb-4">
+        Empezá hoy con el sistema que necesitás
+      </h2>
+      <p class="text-slate-400 mb-8">14 días gratis, sin tarjeta de crédito. Elegí el sistema para tu industria.</p>
+      <a href="#productos" class="inline-block px-8 py-3.5 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition-all active:scale-95 shadow-xl shadow-violet-900/30 text-base">
+        Elegir mi sistema →
+      </a>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/5 py-10">
+      <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-600">
+        <div class="flex items-center gap-2">
+          <span class="font-semibold text-slate-500">SaaSAR</span>
+          <span>© 2025. Todos los derechos reservados.</span>
+        </div>
+        <div class="flex gap-6">
+          <a href="/restaurantos" class="hover:text-slate-400 transition-colors">RestaurantOS</a>
+          <a href="/login"         class="hover:text-slate-400 transition-colors">Iniciar sesión</a>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+</Base>
+
+<style>
+  html { scroll-behavior: smooth; }
+</style>

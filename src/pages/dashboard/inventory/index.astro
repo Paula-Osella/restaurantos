@@ -1,0 +1,210 @@
+---
+import Dashboard from '@/layouts/Dashboard.astro'
+
+const { businessId, supabase } = Astro.locals
+const lowStockOnly = Astro.url.searchParams.get('low_stock') === 'true'
+
+const { data: inventory } = await supabase
+  .from('inventory')
+  .select('*, products(id, name, sku, price), branches(id, name)')
+  .eq('business_id', businessId)
+  .order('updated_at', { ascending: false })
+
+const items = (inventory ?? []).filter(i =>
+  !lowStockOnly || (i.low_stock_threshold !== null && i.quantity <= i.low_stock_threshold)
+)
+
+const lowCount = (inventory ?? []).filter(
+  i => i.low_stock_threshold !== null && i.quantity <= i.low_stock_threshold
+).length
+---
+
+<Dashboard title="Inventario" activeSection="/dashboard/inventory">
+  <div class="p-6 max-w-6xl mx-auto space-y-5">
+
+    <div class="page-header">
+      <h1 class="page-title">Inventario</h1>
+      <button id="open-adjust-modal" class="btn-primary">+ Ajustar stock</button>
+    </div>
+
+    <!-- Filtros -->
+    <div class="flex gap-3">
+      <a href="/dashboard/inventory"
+        class={`px-3 py-1.5 text-xs rounded-lg border transition-all ${!lowStockOnly ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-slate-600 border-slate-200'}`}>
+        Todo el stock
+      </a>
+      <a href="/dashboard/inventory?low_stock=true"
+        class={`px-3 py-1.5 text-xs rounded-lg border transition-all flex items-center gap-1.5 ${lowStockOnly ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-slate-600 border-slate-200'}`}>
+        ⚠ Stock bajo
+        {lowCount > 0 && <span class={`text-xs font-bold ${lowStockOnly ? 'bg-white/20' : 'bg-amber-100 text-amber-700'} px-1.5 py-0.5 rounded-full`}>{lowCount}</span>}
+      </a>
+    </div>
+
+    <!-- Tabla -->
+    <div class="card overflow-hidden">
+      <table class="table-base">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>SKU</th>
+            <th>Sucursal</th>
+            <th class="text-center">Stock actual</th>
+            <th class="text-center">Alerta en</th>
+            <th>Última actualización</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.length === 0 ? (
+            <tr>
+              <td colspan="7" class="text-center py-16 text-slate-400">
+                {lowStockOnly ? 'No hay productos con stock bajo 🎉' : 'No hay ítems en inventario.'}
+              </td>
+            </tr>
+          ) : items.map(item => {
+            const isLow = item.low_stock_threshold !== null && item.quantity <= item.low_stock_threshold
+            return (
+              <tr>
+                <td class="font-medium text-slate-800">{(item.products as any)?.name}</td>
+                <td class="text-xs font-mono text-slate-400">{(item.products as any)?.sku ?? '—'}</td>
+                <td class="text-sm text-slate-500">{(item.branches as any)?.name ?? 'Principal'}</td>
+                <td class="text-center">
+                  <span class={`badge font-mono ${isLow ? 'badge-red' : item.quantity <= (item.low_stock_threshold ?? 0) * 1.5 ? 'badge-amber' : 'badge-green'}`}>
+                    {item.quantity}
+                  </span>
+                </td>
+                <td class="text-center text-sm text-slate-500">
+                  {item.low_stock_threshold !== null ? item.low_stock_threshold : '—'}
+                </td>
+                <td class="text-xs text-slate-400">
+                  {new Date(item.updated_at).toLocaleString('es-AR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}
+                </td>
+                <td>
+                  <button
+                    class="adjust-btn text-xs text-violet-600 hover:text-violet-800 border border-violet-200 px-2.5 py-1 rounded-lg hover:bg-violet-50 transition-colors"
+                    data-product-id={(item.products as any)?.id}
+                    data-product-name={(item.products as any)?.name}
+                    data-current={item.quantity}
+                    data-threshold={item.low_stock_threshold}
+                  >
+                    Ajustar
+                  </button>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal ajuste de stock -->
+  <div id="adjust-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <h2 class="text-base font-semibold text-slate-900">Ajustar inventario</h2>
+        <button id="close-adjust" class="text-slate-400 hover:text-slate-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <form id="adjust-form" class="p-6 space-y-4">
+        <input type="hidden" id="adj-product-id" />
+        <div id="adj-product-name" class="text-sm font-medium text-slate-700 bg-slate-50 rounded-lg px-3 py-2"></div>
+        <div>
+          <label class="label" for="adj-operation">Operación</label>
+          <select id="adj-operation" class="input">
+            <option value="set">Establecer cantidad exacta</option>
+            <option value="add">Agregar al stock</option>
+            <option value="subtract">Restar del stock</option>
+          </select>
+        </div>
+        <div>
+          <label class="label" for="adj-quantity">Cantidad *</label>
+          <input id="adj-quantity" type="number" min="0" step="0.01" required class="input" placeholder="0" />
+        </div>
+        <div>
+          <label class="label" for="adj-threshold">Alerta cuando llegue a (opcional)</label>
+          <input id="adj-threshold" type="number" min="0" class="input" placeholder="Ej: 5" />
+        </div>
+        <div id="adj-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+        <div class="flex gap-3 pt-2">
+          <button type="submit" id="adj-submit" class="btn-primary flex-1">Guardar</button>
+          <button type="button" id="close-adjust-btn" class="btn-secondary px-4">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</Dashboard>
+
+<script>
+  const modal = document.getElementById('adjust-modal')!
+  const adjError = document.getElementById('adj-error')!
+
+  function openModal(data?: any) {
+    adjError.classList.add('hidden')
+    ;(document.getElementById('adjust-form') as HTMLFormElement).reset()
+    if (data) {
+      ;(document.getElementById('adj-product-id') as HTMLInputElement).value = data.productId
+      document.getElementById('adj-product-name')!.textContent = data.productName
+      ;(document.getElementById('adj-quantity') as HTMLInputElement).value = data.current
+      ;(document.getElementById('adj-threshold') as HTMLInputElement).value = data.threshold ?? ''
+    }
+    modal.classList.remove('hidden')
+  }
+
+  const closeModal = () => modal.classList.add('hidden')
+
+  document.getElementById('open-adjust-modal')?.addEventListener('click', () => openModal())
+  document.getElementById('close-adjust')?.addEventListener('click', closeModal)
+  document.getElementById('close-adjust-btn')?.addEventListener('click', closeModal)
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal() })
+
+  document.querySelectorAll('.adjust-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      openModal({
+        productId: (btn as HTMLElement).dataset.productId,
+        productName: (btn as HTMLElement).dataset.productName,
+        current: (btn as HTMLElement).dataset.current,
+        threshold: (btn as HTMLElement).dataset.threshold,
+      })
+    })
+  })
+
+  document.getElementById('adjust-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    adjError.classList.add('hidden')
+    const submit = document.getElementById('adj-submit')!
+    submit.setAttribute('disabled', 'true')
+    submit.textContent = 'Guardando…'
+
+    const payload = {
+      product_id: (document.getElementById('adj-product-id') as HTMLInputElement).value,
+      operation: (document.getElementById('adj-operation') as HTMLSelectElement).value,
+      quantity: parseFloat((document.getElementById('adj-quantity') as HTMLInputElement).value),
+      low_stock_threshold: parseFloat((document.getElementById('adj-threshold') as HTMLInputElement).value) || null,
+    }
+
+    try {
+      const res = await fetch('/api/inventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (!data.success) {
+        adjError.textContent = data.error ?? 'Error al ajustar.'
+        adjError.classList.remove('hidden')
+        return
+      }
+      location.reload()
+    } catch {
+      adjError.textContent = 'Error de conexión.'
+      adjError.classList.remove('hidden')
+    } finally {
+      submit.removeAttribute('disabled')
+      submit.textContent = 'Guardar'
+    }
+  })
+</script>

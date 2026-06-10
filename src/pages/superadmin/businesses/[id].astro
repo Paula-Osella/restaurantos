@@ -1,0 +1,196 @@
+---
+import SuperAdmin from '@/layouts/SuperAdmin.astro'
+
+const { supabase } = Astro.locals
+const { id } = Astro.params
+
+const [{ data: business }, { data: employees }, { data: invoices }, { count: orderCount }] = await Promise.all([
+  supabase
+    .from('businesses')
+    .select('*, plans(id, name, price_monthly, price_annual)')
+    .eq('id', id!)
+    .single(),
+  supabase.from('employees').select('id, full_name, role, is_active').eq('business_id', id!).limit(5),
+  supabase.from('invoices').select('*').eq('business_id', id!).order('created_at', { ascending: false }).limit(5),
+  supabase.from('orders').select('*', { count: 'exact', head: true }).eq('business_id', id!),
+])
+
+if (!business) return Astro.redirect('/superadmin/businesses')
+
+const formatARS = (n: number) =>
+  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(n)
+
+const STATUS_COLOR: Record<string, string> = {
+  active: 'text-emerald-400', trial: 'text-violet-400',
+  suspended: 'text-amber-400', cancelled: 'text-red-400',
+}
+const STATUS_LABEL: Record<string, string> = {
+  active: 'Activa', trial: 'Prueba', suspended: 'Suspendida', cancelled: 'Cancelada',
+}
+---
+
+<SuperAdmin title={business.name} activeSection="/superadmin/businesses">
+  <div class="p-6 space-y-6 max-w-5xl mx-auto">
+
+    <!-- Header -->
+    <div class="flex items-start justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <a href="/superadmin/businesses" class="text-slate-500 hover:text-slate-300 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+          </svg>
+        </a>
+        <div>
+          <h1 class="text-xl font-bold text-white">{business.name}</h1>
+          <p class="text-sm text-slate-500 mt-0.5">/{business.slug}</p>
+        </div>
+        <span class={`text-sm font-semibold ${STATUS_COLOR[business.status] ?? 'text-slate-400'}`}>
+          ● {STATUS_LABEL[business.status] ?? business.status}
+        </span>
+      </div>
+      <!-- Acciones rápidas -->
+      <div class="flex gap-2">
+        {business.status === 'active' && (
+          <button id="suspend-btn" data-id={business.id} data-action="suspend"
+            class="px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-medium rounded-lg hover:bg-amber-500/20 transition-colors">
+            Suspender
+          </button>
+        )}
+        {business.status === 'suspended' && (
+          <button id="activate-btn" data-id={business.id} data-action="activate"
+            class="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium rounded-lg hover:bg-emerald-500/20 transition-colors">
+            Reactivar
+          </button>
+        )}
+        {!['cancelled'].includes(business.status) && (
+          <button id="cancel-btn" data-id={business.id} data-action="cancel"
+            class="px-3 py-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium rounded-lg hover:bg-red-500/20 transition-colors">
+            Cancelar cuenta
+          </button>
+        )}
+      </div>
+    </div>
+
+    <!-- Stats rápidas -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {[
+        { label: 'Plan',         value: (business.plans as any)?.name ?? 'Sin plan' },
+        { label: 'Suscripción',  value: business.subscription_status ?? '—' },
+        { label: 'Total pedidos', value: orderCount ?? 0 },
+        { label: 'Registrada',   value: new Date(business.created_at).toLocaleDateString('es-AR') },
+      ].map(s => (
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+          <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">{s.label}</p>
+          <p class="text-base font-semibold text-white capitalize">{s.value}</p>
+        </div>
+      ))}
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+      <!-- Información del negocio -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+        <h2 class="text-sm font-semibold text-white">Información</h2>
+        {[
+          { label: 'Email',      value: business.email },
+          { label: 'Teléfono',   value: business.phone },
+          { label: 'Dirección',  value: business.address },
+          { label: 'Moneda',     value: business.currency },
+          { label: 'Zona horaria', value: business.timezone },
+          { label: 'MP Sub ID',  value: business.mp_subscription_id },
+          { label: 'Próximo cobro', value: business.next_payment_date
+              ? new Date(business.next_payment_date).toLocaleDateString('es-AR')
+              : null },
+        ].filter(f => f.value).map(field => (
+          <div class="flex justify-between text-sm border-b border-slate-800 pb-2 last:border-0 last:pb-0">
+            <span class="text-slate-500">{field.label}</span>
+            <span class="text-slate-200 font-medium text-right max-w-[60%] truncate">{field.value}</span>
+          </div>
+        ))}
+      </div>
+
+      <!-- Empleados -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+        <h2 class="text-sm font-semibold text-white">Empleados ({(employees ?? []).length})</h2>
+        {(employees ?? []).length === 0 ? (
+          <p class="text-sm text-slate-500">Sin empleados registrados</p>
+        ) : (employees ?? []).map(emp => (
+          <div class="flex items-center justify-between text-sm py-1.5 border-b border-slate-800 last:border-0">
+            <span class="text-slate-200">{emp.full_name}</span>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-500 capitalize">{emp.role}</span>
+              <span class={`w-1.5 h-1.5 rounded-full ${emp.is_active ? 'bg-emerald-400' : 'bg-slate-600'}`}></span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- Historial de pagos -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-800">
+        <h2 class="text-sm font-semibold text-white">Historial de pagos</h2>
+      </div>
+      {(invoices ?? []).length === 0 ? (
+        <p class="text-center py-10 text-slate-500 text-sm">Sin pagos registrados</p>
+      ) : (
+        <table class="w-full text-sm">
+          <thead class="border-b border-slate-800">
+            <tr>
+              {['Fecha', 'Descripción', 'Estado', 'Monto'].map(h => (
+                <th class="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800">
+            {(invoices ?? []).map(inv => (
+              <tr class="hover:bg-slate-800/50 transition-colors">
+                <td class="px-5 py-3.5 text-slate-400 text-xs">
+                  {new Date(inv.created_at).toLocaleDateString('es-AR')}
+                </td>
+                <td class="px-5 py-3.5 text-slate-300 text-xs">
+                  {inv.description ?? 'Suscripción RestaurantOS'}
+                </td>
+                <td class="px-5 py-3.5">
+                  <span class={`text-xs font-medium ${
+                    inv.status === 'paid' ? 'text-emerald-400' :
+                    inv.status === 'open' ? 'text-amber-400' : 'text-slate-500'
+                  }`}>
+                    {inv.status === 'paid' ? '✓ Pagado' : inv.status === 'open' ? '⏳ Pendiente' : 'Anulado'}
+                  </span>
+                </td>
+                <td class="px-5 py-3.5 font-semibold text-white">{formatARS(inv.amount)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  </div>
+</SuperAdmin>
+
+<script>
+  async function saAction(id: string, action: string, label: string) {
+    if (!confirm(`¿Seguro que querés ${label} esta empresa?`)) return
+    try {
+      const res = await fetch(`/api/businesses/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+      const data = await res.json()
+      if (data.success) location.reload()
+      else alert(data.error ?? 'Error.')
+    } catch { alert('Error de conexión.') }
+  }
+
+  document.getElementById('suspend-btn')?.addEventListener('click', function(this: HTMLElement) {
+    saAction(this.dataset.id!, 'suspend', 'suspender')
+  })
+  document.getElementById('activate-btn')?.addEventListener('click', function(this: HTMLElement) {
+    saAction(this.dataset.id!, 'activate', 'reactivar')
+  })
+  document.getElementById('cancel-btn')?.addEventListener('click', function(this: HTMLElement) {
+    saAction(this.dataset.id!, 'cancel', 'cancelar definitivamente')
+  })
+</script>

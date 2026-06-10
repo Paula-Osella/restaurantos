@@ -1,0 +1,109 @@
+---
+import Base from './Base.astro'
+
+interface Props {
+  title?: string
+  activeSection?: string
+}
+
+const { title, activeSection = '' } = Astro.props
+const { userRole, session } = Astro.locals
+
+const userName = session?.user?.user_metadata?.full_name ?? session?.user?.email ?? 'Usuario'
+
+const adminNav = [
+  { href: '/dashboard',           icon: 'grid',         label: 'Inicio'       },
+  { href: '/dashboard/orders',    icon: 'receipt',      label: 'Pedidos'      },
+  { href: '/dashboard/products',  icon: 'package',      label: 'Productos'    },
+  { href: '/dashboard/inventory', icon: 'archive',      label: 'Inventario'   },
+  { href: '/dashboard/customers', icon: 'users',        label: 'Clientes'     },
+  { href: '/dashboard/employees', icon: 'user-check',   label: 'Empleados'    },
+  { href: '/dashboard/reports',   icon: 'bar-chart-2',  label: 'Reportes'     },
+  { href: '/dashboard/settings',  icon: 'settings',     label: 'Configuración'},
+]
+
+const navItems = userRole === 'admin' || userRole === 'superadmin' ? adminNav : [
+  { href: '/dashboard/orders', icon: 'receipt', label: 'Pedidos' },
+]
+---
+
+<Base title={title}>
+  <div class="flex h-screen overflow-hidden bg-slate-50">
+
+    <!-- Sidebar -->
+    <aside class="w-60 flex-shrink-0 bg-white border-r border-slate-200 flex flex-col">
+
+      <!-- Logo -->
+      <div class="px-5 py-5 border-b border-slate-100">
+        <a href="/dashboard" class="flex items-center gap-2.5">
+          <div class="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg>
+          </div>
+          <span class="text-sm font-bold text-slate-900 tracking-tight">RestaurantOS</span>
+        </a>
+      </div>
+
+      <!-- Nav -->
+      <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+        {navItems.map(item => (
+          <a
+            href={item.href}
+            class={`nav-link ${activeSection === item.href ? 'active' : ''}`}
+          >
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+              {item.icon === 'grid' && <><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></>}
+              {item.icon === 'receipt' && <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>}
+              {item.icon === 'package' && <><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><line x1="3.27" y1="6.96" x2="12" y2="12.01"/><line x1="12" y1="22.08" x2="12" y2="12"/></>}
+              {item.icon === 'archive' && <><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></>}
+              {item.icon === 'users' && <><path stroke-linecap="round" stroke-linejoin="round" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path stroke-linecap="round" stroke-linejoin="round" d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></>}
+              {item.icon === 'user-check' && <><path stroke-linecap="round" stroke-linejoin="round" d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></>}
+              {item.icon === 'bar-chart-2' && <><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></>}
+              {item.icon === 'settings' && <><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></>}
+            </svg>
+            {item.label}
+          </a>
+        ))}
+      </nav>
+
+      <!-- Bottom links -->
+      <div class="px-3 py-4 border-t border-slate-100 space-y-0.5">
+        <a href="/pos" class="nav-link text-violet-700 font-semibold">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 7H6a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-3M15 3h6m0 0v6m0-6L10 14"/>
+          </svg>
+          Ir al POS
+        </a>
+        <a href="/billing" class="nav-link">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+          </svg>
+          Facturación
+        </a>
+        <a href="/api/auth/signout" class="nav-link text-red-500 hover:bg-red-50 hover:text-red-700">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+          </svg>
+          Cerrar sesión
+        </a>
+      </div>
+
+      <!-- User -->
+      <div class="px-4 py-3 border-t border-slate-100 flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
+          <span class="text-xs font-bold text-violet-700">{userName.charAt(0).toUpperCase()}</span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-xs font-medium text-slate-900 truncate">{userName}</p>
+          <p class="text-xs text-slate-400 capitalize">{userRole}</p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="flex-1 overflow-y-auto">
+      <slot />
+    </main>
+  </div>
+</Base>

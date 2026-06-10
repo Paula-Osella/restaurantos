@@ -1,0 +1,128 @@
+---
+import Base from '@/layouts/Base.astro'
+const { session } = Astro.locals
+if (!session) return Astro.redirect('/login')
+---
+
+<Base title="Configurá tu negocio">
+  <div class="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-12">
+    <div class="w-full max-w-lg">
+
+      <!-- Header -->
+      <div class="text-center mb-10">
+        <div class="inline-flex items-center justify-center w-14 h-14 bg-violet-100 rounded-2xl mb-4">
+          <svg class="w-7 h-7 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+          </svg>
+        </div>
+        <h1 class="text-2xl font-bold text-slate-900">Configurá tu negocio</h1>
+        <p class="text-sm text-slate-500 mt-1">Solo tarda un minuto. Podés cambiar todo esto después.</p>
+      </div>
+
+      <form id="onboarding-form" class="bg-white border border-slate-200 rounded-2xl p-8 space-y-5 shadow-sm">
+
+        <!-- Nombre del negocio -->
+        <div>
+          <label class="label" for="businessName">Nombre del negocio *</label>
+          <input
+            id="businessName"
+            name="businessName"
+            type="text"
+            required
+            placeholder="Ej: La Burguesía, Parrilla Don Juan…"
+            class="input"
+          />
+        </div>
+
+        <!-- Moneda -->
+        <div>
+          <label class="label" for="currency">Moneda</label>
+          <select id="currency" name="currency" class="input">
+            <option value="ARS" selected>Peso argentino (ARS)</option>
+            <option value="USD">Dólar estadounidense (USD)</option>
+            <option value="UYU">Peso uruguayo (UYU)</option>
+            <option value="CLP">Peso chileno (CLP)</option>
+            <option value="BRL">Real brasileño (BRL)</option>
+          </select>
+        </div>
+
+        <!-- Zona horaria -->
+        <div>
+          <label class="label" for="timezone">Zona horaria</label>
+          <select id="timezone" name="timezone" class="input">
+            <option value="America/Argentina/Buenos_Aires" selected>Argentina (GMT-3)</option>
+            <option value="America/Montevideo">Uruguay (GMT-3)</option>
+            <option value="America/Santiago">Chile (GMT-4)</option>
+            <option value="America/Bogota">Colombia (GMT-5)</option>
+            <option value="America/Lima">Perú (GMT-5)</option>
+            <option value="America/Mexico_City">México (GMT-6)</option>
+            <option value="America/Sao_Paulo">Brasil (GMT-3)</option>
+          </select>
+        </div>
+
+        <!-- Teléfono -->
+        <div>
+          <label class="label" for="phone">Teléfono <span class="text-slate-400 font-normal">(opcional)</span></label>
+          <input id="phone" name="phone" type="tel" placeholder="+54 9 11 1234-5678" class="input" />
+        </div>
+
+        <!-- Dirección -->
+        <div>
+          <label class="label" for="address">Dirección <span class="text-slate-400 font-normal">(opcional)</span></label>
+          <input id="address" name="address" type="text" placeholder="Av. Corrientes 1234, CABA" class="input" />
+        </div>
+
+        <div id="error-msg" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+
+        <button type="submit" id="submit-btn" class="btn-primary w-full py-3 mt-2">
+          Crear mi negocio →
+        </button>
+      </form>
+    </div>
+  </div>
+</Base>
+
+<script>
+  const form = document.getElementById('onboarding-form')
+  const errorMsg = document.getElementById('error-msg')
+  const submitBtn = document.getElementById('submit-btn')
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    errorMsg.classList.add('hidden')
+    submitBtn.disabled = true
+    submitBtn.textContent = 'Configurando…'
+
+    const fd = new FormData(form)
+
+    try {
+      const res = await fetch('/api/businesses/onboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessName: fd.get('businessName'),
+          currency: fd.get('currency'),
+          timezone: fd.get('timezone'),
+          phone: fd.get('phone') || undefined,
+          address: fd.get('address') || undefined,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!data.success) {
+        errorMsg.textContent = data.error ?? 'Error al configurar el negocio.'
+        errorMsg.classList.remove('hidden')
+        return
+      }
+
+      window.location.href = '/dashboard'
+    } catch {
+      errorMsg.textContent = 'Error de conexión. Intentá de nuevo.'
+      errorMsg.classList.remove('hidden')
+    } finally {
+      submitBtn.disabled = false
+      submitBtn.textContent = 'Crear mi negocio →'
+    }
+  })
+</script>
