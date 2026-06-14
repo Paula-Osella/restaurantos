@@ -38,7 +38,11 @@ export const POST: APIRoute = async ({ request }) => {
             preapproval_plan_id: preapprovalPlanId,
             reason: planMeta.title,
             payer_email: userEmail ?? undefined,
+<<<<<<< HEAD
             back_url: `${siteUrl}/restaurantos/dashboard?checkout=success&plan=${planId}`,
+=======
+            back_url: `${siteUrl}/dashboard?checkout=success&plan=${planId}`,
+>>>>>>> 94cdb9875810697bd9a7c4debdb08e95988df769
             status: 'pending',
         }),
         })
@@ -69,4 +73,8 @@ function json(data: unknown, status: number) {
         status,
         headers: { 'Content-Type': 'application/json' },
     })
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 94cdb9875810697bd9a7c4debdb08e95988df769

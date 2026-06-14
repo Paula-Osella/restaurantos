@@ -1,0 +1,139 @@
+---
+import Dashboard from '@/layouts/Dashboard.astro'
+
+const { businessId, supabase } = Astro.locals
+
+const { data: business } = await supabase
+  .from('businesses')
+  .select('*')
+  .eq('id', businessId)
+  .single()
+
+const { data: branches } = await supabase
+  .from('branches')
+  .select('*')
+  .eq('business_id', businessId)
+  .order('created_at')
+---
+
+<Dashboard title="Configuración" activeSection="/dashboard/settings">
+  <div class="p-6 max-w-3xl mx-auto space-y-6">
+
+    <h1 class="page-title">Configuración</h1>
+
+    <!-- Datos del negocio -->
+    <div class="card-p space-y-4">
+      <h2 class="text-sm font-semibold text-slate-700">Información del negocio</h2>
+      <form id="settings-form" class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="label" for="biz-name">Nombre del negocio</label>
+            <input id="biz-name" name="name" type="text" value={business?.name ?? ''} class="input" required />
+          </div>
+          <div>
+            <label class="label" for="biz-phone">Teléfono</label>
+            <input id="biz-phone" name="phone" type="tel" value={business?.phone ?? ''} class="input" />
+          </div>
+          <div>
+            <label class="label" for="biz-email">Email del negocio</label>
+            <input id="biz-email" name="email" type="email" value={business?.email ?? ''} class="input" />
+          </div>
+          <div>
+            <label class="label" for="biz-currency">Moneda</label>
+            <select id="biz-currency" name="currency" class="input">
+              <option value="ARS" selected={business?.currency === 'ARS'}>Peso argentino (ARS)</option>
+              <option value="USD" selected={business?.currency === 'USD'}>Dólar (USD)</option>
+              <option value="UYU" selected={business?.currency === 'UYU'}>Peso uruguayo (UYU)</option>
+            </select>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="label" for="biz-address">Dirección</label>
+            <input id="biz-address" name="address" type="text" value={business?.address ?? ''} class="input" />
+          </div>
+        </div>
+        <div id="settings-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+        <div id="settings-success" class="hidden text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">✅ Cambios guardados correctamente.</div>
+        <button type="submit" id="settings-submit" class="btn-primary">Guardar cambios</button>
+      </form>
+    </div>
+
+    <!-- Sucursales -->
+    <div class="card-p space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-slate-700">Sucursales</h2>
+        <button id="add-branch-btn" class="btn-secondary text-xs py-1.5 px-3">+ Agregar sucursal</button>
+      </div>
+      <div class="space-y-2">
+        {(branches ?? []).map(branch => (
+          <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <div>
+              <p class="text-sm font-medium text-slate-800">{branch.name}</p>
+              {branch.address && <p class="text-xs text-slate-400 mt-0.5">{branch.address}</p>}
+            </div>
+            <span class={`badge ${branch.is_active ? 'badge-green' : 'badge-slate'}`}>
+              {branch.is_active ? 'Activa' : 'Inactiva'}
+            </span>
+          </div>
+        ))}
+        {(branches ?? []).length === 0 && (
+          <p class="text-sm text-slate-400 text-center py-4">No hay sucursales configuradas.</p>
+        )}
+      </div>
+    </div>
+
+    <!-- Plan -->
+    <div class="card-p flex items-center justify-between">
+      <div>
+        <h2 class="text-sm font-semibold text-slate-700">Plan y suscripción</h2>
+        <p class="text-xs text-slate-400 mt-0.5">Gestioná tu plan, facturas y método de pago.</p>
+      </div>
+      <a href="/billing" class="btn-secondary text-sm py-1.5 px-4">Ir a facturación →</a>
+    </div>
+
+    <!-- Zona peligrosa -->
+    <div class="card-p border-red-200 space-y-3">
+      <h2 class="text-sm font-semibold text-red-700">Zona peligrosa</h2>
+      <p class="text-xs text-slate-500">Estas acciones son irreversibles. Procedé con cuidado.</p>
+      <button class="btn-danger text-sm py-2 px-4 opacity-80 hover:opacity-100" onclick="alert('Contactá a soporte para eliminar tu cuenta.')">
+        Eliminar cuenta
+      </button>
+    </div>
+  </div>
+</Dashboard>
+
+<script define:vars={{ businessId }}>
+  document.getElementById('settings-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const errEl = document.getElementById('settings-error')!
+    const okEl = document.getElementById('settings-success')!
+    errEl.classList.add('hidden')
+    okEl.classList.add('hidden')
+    const submit = document.getElementById('settings-submit')!
+    submit.setAttribute('disabled', 'true')
+    submit.textContent = 'Guardando…'
+
+    const fd = new FormData(e.target as HTMLFormElement)
+    const payload = Object.fromEntries(fd.entries())
+
+    try {
+      const res = await fetch(`/api/businesses/${businessId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (!data.success) {
+        errEl.textContent = data.error ?? 'Error al guardar.'
+        errEl.classList.remove('hidden')
+      } else {
+        okEl.classList.remove('hidden')
+      }
+    } catch {
+      errEl.textContent = 'Error de conexión.'
+      errEl.classList.remove('hidden')
+    } finally {
+      submit.removeAttribute('disabled')
+      submit.textContent = 'Guardar cambios'
+    }
+  })
+</script>
