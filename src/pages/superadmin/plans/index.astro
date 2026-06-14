@@ -1,0 +1,221 @@
+---
+import SuperAdmin from '@/layouts/SuperAdmin.astro'
+
+const { supabase } = Astro.locals
+
+const { data: plans } = await supabase
+  .from('plans')
+  .select('*')
+  .order('sort_order')
+
+const formatARS = (n: number) =>
+  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(n)
+---
+
+<SuperAdmin title="Planes" activeSection="/superadmin/plans">
+  <div class="p-6 space-y-5 max-w-5xl mx-auto">
+
+    <div class="flex items-center justify-between">
+      <h1 class="text-xl font-bold text-white">Planes</h1>
+      <button id="open-plan-modal" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-xl transition-colors">
+        + Nuevo plan
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      {(plans ?? []).map(plan => (
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <div class="flex items-start justify-between">
+            <div>
+              <h3 class="text-base font-bold text-white">{plan.name}</h3>
+              {plan.description && <p class="text-xs text-slate-400 mt-0.5">{plan.description}</p>}
+            </div>
+            <span class={`text-xs font-medium px-2 py-0.5 rounded-full ${plan.is_active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-500'}`}>
+              {plan.is_active ? 'Activo' : 'Inactivo'}
+            </span>
+          </div>
+
+          <div class="space-y-1.5">
+            <div class="flex justify-between text-sm">
+              <span class="text-slate-400">Mensual</span>
+              <span class="text-white font-semibold">{formatARS(plan.price_monthly)}</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-slate-400">Anual</span>
+              <span class="text-white font-semibold">{formatARS(plan.price_annual)}</span>
+            </div>
+          </div>
+
+          <div class="space-y-1 text-xs text-slate-400 border-t border-slate-800 pt-3">
+            <p>Productos: {plan.max_products ?? '∞'}</p>
+            <p>Empleados: {plan.max_employees ?? '∞'}</p>
+            <p>Sucursales: {plan.max_branches ?? '∞'}</p>
+            {plan.mp_plan_id && <p class="font-mono text-slate-600 truncate">MP: {plan.mp_plan_id}</p>}
+          </div>
+
+          <button
+            class="edit-plan-btn w-full py-2 text-xs font-medium text-violet-400 border border-violet-500/30 rounded-xl hover:bg-violet-500/10 transition-colors"
+            data-plan={JSON.stringify(plan)}
+          >
+            Editar plan
+          </button>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <!-- Modal plan -->
+  <div id="plan-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+        <h2 id="plan-modal-title" class="text-base font-semibold text-white">Nuevo plan</h2>
+        <button id="close-plan-modal" class="text-slate-500 hover:text-slate-300">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <form id="plan-form" class="p-6 space-y-4">
+        <input type="hidden" id="plan-id" />
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1.5" for="plan-name">Nombre</label>
+          <input id="plan-name" type="text" required
+            class="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-violet-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1.5" for="plan-desc">Descripción</label>
+          <input id="plan-desc" type="text"
+            class="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-violet-500" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1.5">Precio mensual (ARS)</label>
+            <input id="plan-monthly" type="number" min="0" step="0.01"
+              class="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-violet-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1.5">Precio anual (ARS)</label>
+            <input id="plan-annual" type="number" min="0" step="0.01"
+              class="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-violet-500" />
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1.5">Máx. productos</label>
+            <input id="plan-max-products" type="number" min="0" placeholder="∞ (vacío)"
+              class="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-violet-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1.5">Máx. empleados</label>
+            <input id="plan-max-emp" type="number" min="0" placeholder="∞ (vacío)"
+              class="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-violet-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1.5">Máx. sucursales</label>
+            <input id="plan-max-branches" type="number" min="0" placeholder="∞ (vacío)"
+              class="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-violet-500" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1.5">MP Plan ID (Preapproval Plan)</label>
+          <input id="plan-mp-id" type="text" placeholder="2c938..."
+            class="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-violet-500 font-mono" />
+        </div>
+        <div class="flex items-center gap-2">
+          <input id="plan-active" type="checkbox" checked
+            class="w-4 h-4 rounded border-slate-600 text-violet-600 bg-slate-800 focus:ring-violet-500" />
+          <label for="plan-active" class="text-sm text-slate-300">Plan activo (visible en pricing)</label>
+        </div>
+        <div id="plan-error" class="hidden text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2"></div>
+        <div class="flex gap-3 pt-2">
+          <button type="submit" id="plan-submit"
+            class="flex-1 py-2.5 bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50">
+            Guardar plan
+          </button>
+          <button type="button" id="close-plan-btn"
+            class="px-4 py-2.5 bg-slate-800 text-slate-300 text-sm rounded-xl hover:bg-slate-700 transition-colors">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</SuperAdmin>
+
+<script>
+  const modal = document.getElementById('plan-modal')!
+  const planError = document.getElementById('plan-error')!
+
+  function openModal(plan?: any) {
+    planError.classList.add('hidden')
+    ;(document.getElementById('plan-form') as HTMLFormElement).reset()
+    document.getElementById('plan-modal-title')!.textContent = plan ? 'Editar plan' : 'Nuevo plan'
+    if (plan) {
+      ;(document.getElementById('plan-id') as HTMLInputElement).value = plan.id
+      ;(document.getElementById('plan-name') as HTMLInputElement).value = plan.name ?? ''
+      ;(document.getElementById('plan-desc') as HTMLInputElement).value = plan.description ?? ''
+      ;(document.getElementById('plan-monthly') as HTMLInputElement).value = plan.price_monthly ?? ''
+      ;(document.getElementById('plan-annual') as HTMLInputElement).value = plan.price_annual ?? ''
+      ;(document.getElementById('plan-max-products') as HTMLInputElement).value = plan.max_products ?? ''
+      ;(document.getElementById('plan-max-emp') as HTMLInputElement).value = plan.max_employees ?? ''
+      ;(document.getElementById('plan-max-branches') as HTMLInputElement).value = plan.max_branches ?? ''
+      ;(document.getElementById('plan-mp-id') as HTMLInputElement).value = plan.mp_plan_id ?? ''
+      ;(document.getElementById('plan-active') as HTMLInputElement).checked = plan.is_active ?? true
+    } else {
+      ;(document.getElementById('plan-id') as HTMLInputElement).value = ''
+    }
+    modal.classList.remove('hidden')
+  }
+
+  const closeModal = () => modal.classList.add('hidden')
+  document.getElementById('open-plan-modal')?.addEventListener('click', () => openModal())
+  document.getElementById('close-plan-modal')?.addEventListener('click', closeModal)
+  document.getElementById('close-plan-btn')?.addEventListener('click', closeModal)
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal() })
+
+  document.querySelectorAll('.edit-plan-btn').forEach(btn => {
+    btn.addEventListener('click', () => openModal(JSON.parse((btn as HTMLElement).dataset.plan!)))
+  })
+
+  document.getElementById('plan-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    planError.classList.add('hidden')
+    const submit = document.getElementById('plan-submit')!
+    submit.setAttribute('disabled', 'true')
+    submit.textContent = 'Guardando…'
+
+    const planId = (document.getElementById('plan-id') as HTMLInputElement).value
+    const payload = {
+      name: (document.getElementById('plan-name') as HTMLInputElement).value,
+      description: (document.getElementById('plan-desc') as HTMLInputElement).value || null,
+      price_monthly: parseFloat((document.getElementById('plan-monthly') as HTMLInputElement).value) || 0,
+      price_annual: parseFloat((document.getElementById('plan-annual') as HTMLInputElement).value) || 0,
+      max_products: parseInt((document.getElementById('plan-max-products') as HTMLInputElement).value) || null,
+      max_employees: parseInt((document.getElementById('plan-max-emp') as HTMLInputElement).value) || null,
+      max_branches: parseInt((document.getElementById('plan-max-branches') as HTMLInputElement).value) || null,
+      mp_plan_id: (document.getElementById('plan-mp-id') as HTMLInputElement).value || null,
+      is_active: (document.getElementById('plan-active') as HTMLInputElement).checked,
+    }
+
+    try {
+      const res = await fetch(planId ? `/api/plans/${planId}` : '/api/plans', {
+        method: planId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (!data.success) {
+        planError.textContent = data.error ?? 'Error al guardar.'
+        planError.classList.remove('hidden')
+        return
+      }
+      location.reload()
+    } catch {
+      planError.textContent = 'Error de conexión.'
+      planError.classList.remove('hidden')
+    } finally {
+      submit.removeAttribute('disabled')
+      submit.textContent = 'Guardar plan'
+    }
+  })
+</script>

@@ -1,0 +1,168 @@
+---
+import SuperAdmin from '@/layouts/SuperAdmin.astro'
+
+const { supabase } = Astro.locals
+
+const page = parseInt(Astro.url.searchParams.get('page') ?? '1')
+const status = Astro.url.searchParams.get('status') ?? ''
+const search = Astro.url.searchParams.get('q') ?? ''
+const pageSize = 20
+
+let query = supabase
+  .from('businesses')
+  .select('*, plans(id, name, price_monthly)', { count: 'exact' })
+  .order('created_at', { ascending: false })
+  .range((page - 1) * pageSize, page * pageSize - 1)
+
+if (status) query = query.eq('status', status)
+if (search) query = query.ilike('name', `%${search}%`)
+
+const { data: businesses, count } = await query
+const totalPages = Math.ceil((count ?? 0) / pageSize)
+
+const STATUS_LABEL: Record<string, string> = {
+  active: 'Activa', trial: 'Prueba', suspended: 'Suspendida', cancelled: 'Cancelada',
+}
+const STATUS_CLASS: Record<string, string> = {
+  active: 'text-emerald-400', trial: 'text-violet-400',
+  suspended: 'text-amber-400', cancelled: 'text-red-400',
+}
+---
+
+<SuperAdmin title="Empresas" activeSection="/superadmin/businesses">
+  <div class="p-6 space-y-5 max-w-6xl mx-auto">
+
+    <div class="flex items-center justify-between">
+      <h1 class="text-xl font-bold text-white">Empresas <span class="text-slate-500 font-normal text-base">({count ?? 0})</span></h1>
+    </div>
+
+    <!-- Filtros -->
+    <div class="flex flex-wrap gap-3">
+      <form method="get" class="flex gap-2">
+        <input name="q" type="search" value={search} placeholder="Buscar empresa…"
+          class="bg-slate-800 border border-slate-700 text-white text-sm rounded-xl px-3 py-2 placeholder:text-slate-500 focus:outline-none focus:border-violet-500 w-56" />
+        {status && <input type="hidden" name="status" value={status} />}
+        <button type="submit" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-xl transition-colors">Buscar</button>
+      </form>
+      <div class="flex gap-2">
+        {['', 'active', 'trial', 'suspended', 'cancelled'].map(s => (
+          <a
+            href={`/superadmin/businesses${s ? `?status=${s}` : ''}`}
+            class={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+              status === s
+                ? 'bg-violet-600 text-white border-violet-600'
+                : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500'
+            }`}
+          >
+            {s === '' ? 'Todas' : STATUS_LABEL[s]}
+          </a>
+        ))}
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+      <table class="w-full text-sm">
+        <thead class="border-b border-slate-800">
+          <tr>
+            {['Empresa', 'Plan', 'Estado', 'Suscripción', 'Registrada', 'Acciones'].map(h => (
+              <th class="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {(businesses ?? []).length === 0 ? (
+            <tr>
+              <td colspan="6" class="text-center py-16 text-slate-500">No hay empresas{search ? ` para "${search}"` : ''}</td>
+            </tr>
+          ) : (businesses ?? []).map(biz => (
+            <tr class="hover:bg-slate-800/50 transition-colors">
+              <td class="px-5 py-3.5">
+                <a href={`/superadmin/businesses/${biz.id}`} class="font-medium text-white hover:text-violet-300 transition-colors block">
+                  {biz.name}
+                </a>
+                <span class="text-xs text-slate-500">{biz.slug}</span>
+              </td>
+              <td class="px-5 py-3.5 text-slate-400 text-xs">{(biz.plans as any)?.name ?? <span class="text-slate-600">Sin plan</span>}</td>
+              <td class="px-5 py-3.5">
+                <span class={`text-xs font-semibold ${STATUS_CLASS[biz.status] ?? 'text-slate-400'}`}>
+                  ● {STATUS_LABEL[biz.status] ?? biz.status}
+                </span>
+              </td>
+              <td class="px-5 py-3.5 text-xs text-slate-400 capitalize">
+                {biz.subscription_status ?? '—'}
+              </td>
+              <td class="px-5 py-3.5 text-xs text-slate-500">
+                {new Date(biz.created_at).toLocaleDateString('es-AR')}
+              </td>
+              <td class="px-5 py-3.5">
+                <div class="flex items-center gap-2">
+                  <a href={`/superadmin/businesses/${biz.id}`}
+                    class="text-xs text-violet-400 hover:text-violet-300 transition-colors">
+                    Ver →
+                  </a>
+                  {biz.status === 'active' && (
+                    <button
+                      class="sa-action-btn text-xs text-amber-400 hover:text-amber-300 transition-colors"
+                      data-id={biz.id} data-action="suspend">
+                      Suspender
+                    </button>
+                  )}
+                  {biz.status === 'suspended' && (
+                    <button
+                      class="sa-action-btn text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
+                      data-id={biz.id} data-action="activate">
+                      Reactivar
+                    </button>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginación -->
+    {totalPages > 1 && (
+      <div class="flex items-center justify-between text-sm text-slate-500">
+        <span>{count} empresas en total</span>
+        <div class="flex gap-2">
+          {page > 1 && (
+            <a href={`?page=${page - 1}${status ? `&status=${status}` : ''}`}
+              class="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-lg text-xs hover:bg-slate-700 transition-colors">← Anterior</a>
+          )}
+          <span class="px-3 py-1.5 bg-slate-800 rounded-lg text-xs">{page} / {totalPages}</span>
+          {page < totalPages && (
+            <a href={`?page=${page + 1}${status ? `&status=${status}` : ''}`}
+              class="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-lg text-xs hover:bg-slate-700 transition-colors">Siguiente →</a>
+          )}
+        </div>
+      </div>
+    )}
+  </div>
+</SuperAdmin>
+
+<script>
+  document.querySelectorAll('.sa-action-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = (btn as HTMLElement).dataset.id!
+      const action = (btn as HTMLElement).dataset.action!
+      const label = action === 'suspend' ? 'suspender' : 'reactivar'
+      if (!confirm(`¿Seguro que querés ${label} esta empresa?`)) return
+
+      try {
+        const res = await fetch(`/api/businesses/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action }),
+        })
+        const data = await res.json()
+        if (data.success) location.reload()
+        else alert(data.error ?? 'Error al ejecutar la acción.')
+      } catch {
+        alert('Error de conexión.')
+      }
+    })
+  })
+</script>

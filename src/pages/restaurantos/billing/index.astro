@@ -1,0 +1,8 @@
+---
+import Dashboard from '../../../layouts/Dashboard.astro'
+import BillingPage from '../../../components/billing/BillingPage'
+---
+
+<Dashboard title="Facturación" activeSection="/restaurantos/billing">
+  <BillingPage client:load />
+</Dashboard>

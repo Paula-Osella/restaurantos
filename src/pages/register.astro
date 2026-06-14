@@ -1,0 +1,97 @@
+---
+import Base from '@/layouts/Base.astro'
+const { session } = Astro.locals
+if (session) return Astro.redirect('/restaurantos/dashboard')
+---
+
+<Base title="Crear cuenta">
+  <div class="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-12">
+    <div class="w-full max-w-sm">
+      <div class="text-center mb-8">
+        <a href="/" class="inline-flex items-center gap-2 mb-6">
+          <div class="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg>
+          </div>
+          <span class="font-bold text-slate-900">RestaurantOS</span>
+        </a>
+        <h1 class="text-2xl font-bold text-slate-900">Creá tu cuenta</h1>
+        <p class="text-sm text-slate-500 mt-1">14 días gratis, sin tarjeta de crédito</p>
+      </div>
+
+      <form id="register-form" class="space-y-4">
+        <div>
+          <label class="label" for="fullName">Tu nombre</label>
+          <input id="fullName" name="fullName" type="text" required placeholder="Juan García" class="input" />
+        </div>
+        <div>
+          <label class="label" for="email">Email</label>
+          <input id="email" name="email" type="email" required placeholder="tu@email.com" class="input" />
+        </div>
+        <div>
+          <label class="label" for="password">Contraseña</label>
+          <input id="password" name="password" type="password" required placeholder="Mínimo 8 caracteres" minlength="8" class="input" />
+        </div>
+
+        <div id="error-msg" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+
+        <button type="submit" id="submit-btn" class="btn-primary w-full py-3">
+          Crear cuenta gratis
+        </button>
+
+        <p class="text-xs text-center text-slate-400">
+          Al registrarte aceptás los <a href="/terms" class="text-violet-600">términos de uso</a>.
+        </p>
+      </form>
+
+      <p class="text-center text-sm text-slate-500 mt-6">
+        ¿Ya tenés cuenta?
+        <a href="/login" class="text-violet-600 font-medium hover:text-violet-800">Iniciá sesión</a>
+      </p>
+    </div>
+  </div>
+</Base>
+
+<script>
+  const form = document.getElementById('register-form')
+  const errorMsg = document.getElementById('error-msg')
+  const submitBtn = document.getElementById('submit-btn')
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    errorMsg.classList.add('hidden')
+    submitBtn.disabled = true
+    submitBtn.textContent = 'Creando cuenta…'
+
+    const formData = new FormData(form)
+
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.get('email'),
+          password: formData.get('password'),
+          fullName: formData.get('fullName'),
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!data.success) {
+        errorMsg.textContent = data.error ?? 'Error al crear la cuenta.'
+        errorMsg.classList.remove('hidden')
+        return
+      }
+
+      window.location.href = '/onboarding'
+    } catch {
+      errorMsg.textContent = 'Error de conexión. Intentá de nuevo.'
+      errorMsg.classList.remove('hidden')
+    } finally {
+      submitBtn.disabled = false
+      submitBtn.textContent = 'Crear cuenta gratis'
+    }
+  })
+</script>

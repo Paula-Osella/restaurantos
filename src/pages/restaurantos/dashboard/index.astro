@@ -1,0 +1,207 @@
+---
+import Dashboard from '@/layouts/Dashboard.astro'
+
+const { businessId, userRole, supabase } = Astro.locals
+
+// Métricas del día
+const today = new Date()
+today.setHours(0, 0, 0, 0)
+
+const [
+  { data: todayOrders },
+  { data: lowStock },
+  { data: business },
+] = await Promise.all([
+  supabase
+    .from('orders')
+    .select('id, total, status')
+    .eq('business_id', businessId)
+    .gte('created_at', today.toISOString()),
+
+  supabase
+    .from('inventory')
+    .select('id, products(name), quantity, low_stock_threshold')
+    .eq('business_id', businessId)
+    .not('low_stock_threshold', 'is', null),
+
+  supabase
+    .from('businesses')
+    .select('name, status, subscription_status, trial_ends_at, plans(name)')
+    .eq('id', businessId)
+    .single(),
+])
+
+const orders = todayOrders ?? []
+const activeOrders = orders.filter(o => ['pending','confirmed','preparing','ready'].includes(o.status))
+const revenue = orders.filter(o => o.status === 'delivered').reduce((s, o) => s + o.total, 0)
+const lowStockItems = (lowStock ?? []).filter(i => i.low_stock_threshold !== null && i.quantity <= i.low_stock_threshold)
+
+const trialDays = business?.trial_ends_at
+  ? Math.max(0, Math.ceil((new Date(business.trial_ends_at).getTime() - Date.now()) / 86400000))
+  : null
+
+const formatARS = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(n)
+---
+
+<Dashboard title="Inicio" activeSection="/restaurantos/dashboard">
+  <div class="p-6 max-w-6xl mx-auto space-y-6">
+
+    <!-- Trial banner -->
+    {business?.status === 'trial' && trialDays !== null && (
+      <div class="flex items-center justify-between px-5 py-3.5 bg-violet-50 border border-violet-200 rounded-xl">
+        <div class="flex items-center gap-3">
+          <span class="text-violet-600 text-lg">⏳</span>
+          <p class="text-sm text-violet-800 font-medium">
+            {trialDays > 0
+              ? `Tu período de prueba vence en ${trialDays} día${trialDays !== 1 ? 's' : ''}.`
+              : 'Tu período de prueba venció.'
+            }
+          </p>
+        </div>
+        <a href="/restaurantos/billing" class="text-sm font-semibold text-violet-700 hover:text-violet-900 border border-violet-300 px-3 py-1.5 rounded-lg hover:bg-violet-100 transition-colors">
+          Suscribirme →
+        </a>
+      </div>
+    )}
+
+    <!-- Header -->
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Hola, {business?.name ?? 'Negocio'} 👋</h1>
+        <p class="text-sm text-slate-500 mt-0.5">
+          {new Date().toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long' })}
+        </p>
+      </div>
+      <div class="flex gap-3">
+        <a href="/pos" class="btn-primary">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          Nuevo pedido
+        </a>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="stat-card">
+        <span class="stat-label">Ventas hoy</span>
+        <span class="stat-value">{formatARS(revenue)}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Pedidos hoy</span>
+        <span class="stat-value">{orders.length}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">En cocina</span>
+        <span class="stat-value">{activeOrders.length}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Stock bajo</span>
+        <span class={`stat-value ${lowStockItems.length > 0 ? 'text-amber-600' : ''}`}>{lowStockItems.length}</span>
+      </div>
+    </div>
+
+    <!-- Quick actions + alerts -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+      <!-- Accesos rápidos -->
+      <div class="col-span-2 card-p">
+        <h2 class="text-sm font-semibold text-slate-700 mb-4">Accesos rápidos</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {[
+            { href:'/pos',                    icon:'🛒', label:'Punto de venta'  },
+            { href:'/kitchen',                icon:'🍳', label:'Pantalla cocina' },
+            { href:'/restaurantos/dashboard/orders',       icon:'📋', label:'Ver pedidos'     },
+            { href:'/restaurantos/dashboard/products',     icon:'📦', label:'Productos'       },
+            { href:'/restaurantos/dashboard/inventory',    icon:'🗃️',  label:'Inventario'     },
+            { href:'/restaurantos/dashboard/reports',      icon:'📊', label:'Reportes'        },
+          ].map(a => (
+            <a href={a.href} class="flex flex-col items-center gap-2 p-4 rounded-xl border border-slate-200 hover:border-violet-300 hover:bg-violet-50 transition-all group">
+              <span class="text-2xl">{a.icon}</span>
+              <span class="text-xs font-medium text-slate-700 group-hover:text-violet-700 text-center">{a.label}</span>
+            </a>
+          ))}
+        </div>
+      </div>
+
+      <!-- Alertas stock bajo -->
+      <div class="card-p">
+        <h2 class="text-sm font-semibold text-slate-700 mb-4">
+          Alertas de inventario
+          {lowStockItems.length > 0 && (
+            <span class="ml-2 badge-red">{lowStockItems.length}</span>
+          )}
+        </h2>
+        {lowStockItems.length === 0 ? (
+          <div class="text-center py-8 text-slate-400">
+            <span class="text-3xl block mb-2">✅</span>
+            <p class="text-sm">Stock en orden</p>
+          </div>
+        ) : (
+          <div class="space-y-2">
+            {lowStockItems.slice(0, 6).map(item => (
+              <div class="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+                <span class="text-sm text-slate-700 truncate">{(item.products as any)?.name}</span>
+                <span class="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full ml-2 flex-shrink-0">
+                  {item.quantity} unid.
+                </span>
+              </div>
+            ))}
+            {lowStockItems.length > 6 && (
+              <a href="/restaurantos/dashboard/inventory?low_stock=true" class="text-xs text-violet-600 hover:underline block pt-1">
+                Ver todos ({lowStockItems.length}) →
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+
+    <!-- Pedidos activos en tiempo real -->
+    <div class="card">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div class="flex items-center gap-2">
+          <h2 class="text-sm font-semibold text-slate-700">Pedidos activos</h2>
+          <span class="w-2 h-2 bg-emerald-400 rounded-full pulse-dot"></span>
+        </div>
+        <a href="/restaurantos/dashboard/orders" class="text-xs text-violet-600 hover:text-violet-800 font-medium">Ver todos →</a>
+      </div>
+      {activeOrders.length === 0 ? (
+        <div class="py-12 text-center text-slate-400">
+          <span class="text-4xl block mb-2">🎉</span>
+          <p class="text-sm">No hay pedidos activos</p>
+        </div>
+      ) : (
+        <table class="table-base">
+          <thead>
+            <tr>
+              <th>Pedido</th>
+              <th>Estado</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {activeOrders.map(order => (
+              <tr>
+                <td class="font-medium">#{order.id.slice(-6).toUpperCase()}</td>
+                <td>
+                  <span class={`badge ${
+                    order.status === 'pending'   ? 'badge-slate' :
+                    order.status === 'confirmed' ? 'badge-blue'  :
+                    order.status === 'preparing' ? 'badge-amber' : 'badge-green'
+                  }`}>
+                    {order.status === 'pending'   ? 'Pendiente'  :
+                     order.status === 'confirmed' ? 'Confirmado' :
+                     order.status === 'preparing' ? 'En cocina'  : 'Listo'}
+                  </span>
+                </td>
+                <td class="font-medium">{formatARS(order.total)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  </div>
+</Dashboard>

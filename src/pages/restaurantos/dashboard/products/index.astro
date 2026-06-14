@@ -1,0 +1,267 @@
+---
+import Dashboard from '@/layouts/Dashboard.astro'
+
+const { businessId, supabase } = Astro.locals
+const search = Astro.url.searchParams.get('q') ?? ''
+const categoryFilter = Astro.url.searchParams.get('category') ?? ''
+
+const [{ data: products, count }, { data: categories }] = await Promise.all([
+  supabase
+    .from('products')
+    .select('*, categories(id, name, color)', { count: 'exact' })
+    .eq('business_id', businessId)
+    .order('name')
+    .then(r => {
+      let q = supabase
+        .from('products')
+        .select('*, categories(id, name, color)', { count: 'exact' })
+        .eq('business_id', businessId)
+        .order('name')
+      if (search) q = q.ilike('name', `%${search}%`)
+      if (categoryFilter) q = q.eq('category_id', categoryFilter)
+      return q
+    }),
+  supabase
+    .from('categories')
+    .select('id, name, color')
+    .eq('business_id', businessId)
+    .eq('is_active', true)
+    .order('sort_order'),
+])
+
+// Re-query with filters applied properly
+const { data: filteredProducts, count: filteredCount } = await (() => {
+  let q = supabase
+    .from('products')
+    .select('*, categories(id, name, color)', { count: 'exact' })
+    .eq('business_id', businessId)
+    .order('name')
+  if (search) q = q.ilike('name', `%${search}%`)
+  if (categoryFilter) q = q.eq('category_id', categoryFilter)
+  return q
+})()
+
+const formatARS = (n: number) =>
+  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(n)
+---
+
+<Dashboard title="Productos" activeSection="/restaurantos/dashboard/products">
+  <div class="p-6 max-w-6xl mx-auto space-y-5">
+
+    <div class="page-header">
+      <h1 class="page-title">Productos <span class="text-slate-400 font-normal text-base ml-1">({filteredCount ?? 0})</span></h1>
+      <button id="open-create-modal" class="btn-primary">+ Agregar producto</button>
+    </div>
+
+    <!-- Filters -->
+    <div class="flex flex-wrap gap-3">
+      <form method="get" class="flex gap-2 flex-1 min-w-[200px]">
+        <input
+          name="q"
+          type="search"
+          value={search}
+          placeholder="Buscar producto…"
+          class="input text-sm flex-1"
+        />
+        {categoryFilter && <input type="hidden" name="category" value={categoryFilter} />}
+        <button type="submit" class="btn-secondary text-sm px-3">Buscar</button>
+      </form>
+      <div class="flex gap-2 flex-wrap">
+        <a href="/restaurantos/dashboard/products" class={`px-3 py-1.5 text-xs rounded-lg border transition-all ${!categoryFilter ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-slate-600 border-slate-200 hover:border-violet-300'}`}>Todos</a>
+        {(categories ?? []).map(cat => (
+          <a
+            href={`/restaurantos/dashboard/products?category=${cat.id}`}
+            class={`px-3 py-1.5 text-xs rounded-lg border transition-all ${categoryFilter === cat.id ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-slate-600 border-slate-200 hover:border-violet-300'}`}
+          >
+            {cat.name}
+          </a>
+        ))}
+      </div>
+    </div>
+
+    <!-- Products grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {(filteredProducts ?? []).length === 0 ? (
+        <div class="col-span-full text-center py-20 text-slate-400">
+          <p class="text-4xl mb-3">📦</p>
+          <p class="text-sm">No hay productos{search ? ` para "${search}"` : ''}.</p>
+          <button id="open-create-modal-empty" class="btn-primary mt-4 text-sm">+ Agregar el primero</button>
+        </div>
+      ) : (filteredProducts ?? []).map(product => (
+        <div class="card hover:shadow-md transition-shadow flex flex-col">
+          {product.image_url ? (
+            <img src={product.image_url} alt={product.name} class="w-full h-36 object-cover rounded-t-2xl" />
+          ) : (
+            <div class="w-full h-28 bg-gradient-to-br from-slate-100 to-slate-200 rounded-t-2xl flex items-center justify-center text-3xl">🍔</div>
+          )}
+          <div class="p-4 flex flex-col flex-1">
+            <div class="flex items-start justify-between gap-2 mb-1">
+              <h3 class="text-sm font-semibold text-slate-900 leading-tight">{product.name}</h3>
+              <span class={`flex-shrink-0 w-2 h-2 rounded-full mt-1.5 ${product.is_available ? 'bg-emerald-400' : 'bg-slate-300'}`}></span>
+            </div>
+            {(product.categories as any)?.name && (
+              <span class="text-xs text-slate-400 mb-2">{(product.categories as any).name}</span>
+            )}
+            <div class="flex items-center justify-between mt-auto pt-3 border-t border-slate-100">
+              <span class="text-base font-bold text-slate-900">{formatARS(product.price)}</span>
+              <div class="flex gap-1">
+                <button
+                  class="edit-product-btn text-xs text-violet-600 hover:text-violet-800 border border-violet-200 px-2.5 py-1 rounded-lg hover:bg-violet-50 transition-colors"
+                  data-product={JSON.stringify({
+                    id: product.id, name: product.name, price: product.price,
+                    cost: product.cost, description: product.description,
+                    category_id: product.category_id, is_available: product.is_available,
+                    sku: product.sku
+                  })}
+                >
+                  Editar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <!-- Modal crear/editar producto -->
+  <div id="product-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <h2 id="modal-title" class="text-base font-semibold text-slate-900">Nuevo producto</h2>
+        <button id="close-modal" class="text-slate-400 hover:text-slate-600 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <form id="product-form" class="p-6 space-y-4">
+        <input type="hidden" id="product-id" />
+        <div>
+          <label class="label" for="p-name">Nombre *</label>
+          <input id="p-name" name="name" type="text" required class="input" placeholder="Hamburguesa clásica" />
+        </div>
+        <div>
+          <label class="label" for="p-description">Descripción</label>
+          <textarea id="p-description" name="description" rows="2" class="input resize-none" placeholder="Descripción opcional"></textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label" for="p-price">Precio (ARS) *</label>
+            <input id="p-price" name="price" type="number" min="0" step="0.01" required class="input" placeholder="0.00" />
+          </div>
+          <div>
+            <label class="label" for="p-cost">Costo (ARS)</label>
+            <input id="p-cost" name="cost" type="number" min="0" step="0.01" class="input" placeholder="0.00" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label" for="p-category">Categoría</label>
+            <select id="p-category" name="category_id" class="input">
+              <option value="">Sin categoría</option>
+              {(categories ?? []).map(c => (
+                <option value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label class="label" for="p-sku">SKU / Código</label>
+            <input id="p-sku" name="sku" type="text" class="input" placeholder="Opcional" />
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <input id="p-available" name="is_available" type="checkbox" checked class="w-4 h-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500" />
+          <label for="p-available" class="text-sm text-slate-700">Disponible para la venta</label>
+        </div>
+        <div id="form-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+        <div class="flex gap-3 pt-2">
+          <button type="submit" id="form-submit" class="btn-primary flex-1 py-2.5">Guardar producto</button>
+          <button type="button" id="close-modal-btn" class="btn-secondary px-4">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</Dashboard>
+
+<script>
+  const modal = document.getElementById('product-modal')!
+  const form = document.getElementById('product-form') as HTMLFormElement
+  const modalTitle = document.getElementById('modal-title')!
+  const formError = document.getElementById('form-error')!
+  const formSubmit = document.getElementById('form-submit')!
+
+  function openModal(product?: any) {
+    formError.classList.add('hidden')
+    form.reset()
+    if (product) {
+      modalTitle.textContent = 'Editar producto'
+      ;(document.getElementById('product-id') as HTMLInputElement).value = product.id
+      ;(document.getElementById('p-name') as HTMLInputElement).value = product.name ?? ''
+      ;(document.getElementById('p-description') as HTMLTextAreaElement).value = product.description ?? ''
+      ;(document.getElementById('p-price') as HTMLInputElement).value = product.price ?? ''
+      ;(document.getElementById('p-cost') as HTMLInputElement).value = product.cost ?? ''
+      ;(document.getElementById('p-category') as HTMLSelectElement).value = product.category_id ?? ''
+      ;(document.getElementById('p-sku') as HTMLInputElement).value = product.sku ?? ''
+      ;(document.getElementById('p-available') as HTMLInputElement).checked = product.is_available ?? true
+    } else {
+      modalTitle.textContent = 'Nuevo producto'
+      ;(document.getElementById('product-id') as HTMLInputElement).value = ''
+    }
+    modal.classList.remove('hidden')
+  }
+
+  function closeModal() { modal.classList.add('hidden') }
+
+  document.getElementById('open-create-modal')?.addEventListener('click', () => openModal())
+  document.getElementById('open-create-modal-empty')?.addEventListener('click', () => openModal())
+  document.getElementById('close-modal')?.addEventListener('click', closeModal)
+  document.getElementById('close-modal-btn')?.addEventListener('click', closeModal)
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal() })
+
+  document.querySelectorAll('.edit-product-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const product = JSON.parse((btn as HTMLElement).dataset.product!)
+      openModal(product)
+    })
+  })
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    formError.classList.add('hidden')
+    formSubmit.setAttribute('disabled', 'true')
+    formSubmit.textContent = 'Guardando…'
+
+    const productId = (document.getElementById('product-id') as HTMLInputElement).value
+    const payload = {
+      name: (document.getElementById('p-name') as HTMLInputElement).value,
+      description: (document.getElementById('p-description') as HTMLTextAreaElement).value || null,
+      price: parseFloat((document.getElementById('p-price') as HTMLInputElement).value),
+      cost: parseFloat((document.getElementById('p-cost') as HTMLInputElement).value) || null,
+      category_id: (document.getElementById('p-category') as HTMLSelectElement).value || null,
+      sku: (document.getElementById('p-sku') as HTMLInputElement).value || null,
+      is_available: (document.getElementById('p-available') as HTMLInputElement).checked,
+    }
+
+    try {
+      const res = await fetch(productId ? `/api/products/${productId}` : '/api/products', {
+        method: productId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (!data.success) {
+        formError.textContent = data.error ?? 'Error al guardar.'
+        formError.classList.remove('hidden')
+        return
+      }
+      location.reload()
+    } catch {
+      formError.textContent = 'Error de conexión.'
+      formError.classList.remove('hidden')
+    } finally {
+      formSubmit.removeAttribute('disabled')
+      formSubmit.textContent = 'Guardar producto'
+    }
+  })
+</script>

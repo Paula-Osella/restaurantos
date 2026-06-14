@@ -1,0 +1,210 @@
+---
+import Dashboard from '@/layouts/Dashboard.astro'
+
+const { businessId, supabase } = Astro.locals
+const search = Astro.url.searchParams.get('q') ?? ''
+const page = parseInt(Astro.url.searchParams.get('page') ?? '1')
+const pageSize = 25
+
+let query = supabase
+  .from('customers')
+  .select('*', { count: 'exact' })
+  .eq('business_id', businessId)
+  .order('total_spent', { ascending: false })
+  .range((page - 1) * pageSize, page * pageSize - 1)
+
+if (search) query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`)
+
+const { data: customers, count } = await query
+const totalPages = Math.ceil((count ?? 0) / pageSize)
+
+const formatARS = (n: number) =>
+  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(n)
+---
+
+<Dashboard title="Clientes" activeSection="/restaurantos/dashboard/customers">
+  <div class="p-6 max-w-6xl mx-auto space-y-5">
+
+    <div class="page-header">
+      <h1 class="page-title">Clientes <span class="text-slate-400 font-normal text-base ml-1">({count ?? 0})</span></h1>
+      <button id="open-customer-modal" class="btn-primary">+ Agregar cliente</button>
+    </div>
+
+    <!-- Búsqueda -->
+    <form method="get" class="flex gap-2 max-w-sm">
+      <input name="q" type="search" value={search} placeholder="Buscar por nombre, email o teléfono…" class="input text-sm flex-1" />
+      <button type="submit" class="btn-secondary text-sm px-3">Buscar</button>
+    </form>
+
+    <!-- Tabla -->
+    <div class="card overflow-hidden">
+      <table class="table-base">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Teléfono</th>
+            <th class="text-center">Pedidos</th>
+            <th class="text-right">Total gastado</th>
+            <th>Registrado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {(customers ?? []).length === 0 ? (
+            <tr>
+              <td colspan="6" class="text-center py-16 text-slate-400">
+                {search ? `Sin resultados para "${search}"` : 'No hay clientes registrados.'}
+              </td>
+            </tr>
+          ) : (customers ?? []).map(c => (
+            <tr>
+              <td>
+                <div>
+                  <p class="font-medium text-slate-800">{c.full_name}</p>
+                  {c.email && <p class="text-xs text-slate-400 mt-0.5">{c.email}</p>}
+                </div>
+              </td>
+              <td class="text-sm text-slate-500">{c.phone ?? '—'}</td>
+              <td class="text-center font-medium">{c.total_orders}</td>
+              <td class="text-right font-semibold text-slate-900">{formatARS(c.total_spent)}</td>
+              <td class="text-xs text-slate-400">{new Date(c.created_at).toLocaleDateString('es-AR')}</td>
+              <td>
+                <button
+                  class="edit-customer-btn text-xs text-violet-600 border border-violet-200 px-2.5 py-1 rounded-lg hover:bg-violet-50 transition-colors"
+                  data-customer={JSON.stringify({ id: c.id, full_name: c.full_name, email: c.email, phone: c.phone, address: c.address, notes: c.notes })}
+                >
+                  Editar
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginación -->
+    {totalPages > 1 && (
+      <div class="flex items-center justify-between text-sm text-slate-500">
+        <span>{count} clientes en total</span>
+        <div class="flex gap-2">
+          {page > 1 && <a href={`?page=${page-1}${search ? `&q=${search}` : ''}`} class="btn-secondary py-1.5 px-3 text-xs">← Anterior</a>}
+          <span class="px-3 py-1.5 bg-slate-100 rounded-lg text-xs">{page} / {totalPages}</span>
+          {page < totalPages && <a href={`?page=${page+1}${search ? `&q=${search}` : ''}`} class="btn-secondary py-1.5 px-3 text-xs">Siguiente →</a>}
+        </div>
+      </div>
+    )}
+  </div>
+
+  <!-- Modal cliente -->
+  <div id="customer-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <h2 id="cust-modal-title" class="text-base font-semibold">Nuevo cliente</h2>
+        <button id="close-cust-modal" class="text-slate-400 hover:text-slate-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <form id="customer-form" class="p-6 space-y-4">
+        <input type="hidden" id="cust-id" />
+        <div>
+          <label class="label" for="cust-name">Nombre completo *</label>
+          <input id="cust-name" type="text" required class="input" placeholder="María González" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label" for="cust-phone">Teléfono</label>
+            <input id="cust-phone" type="tel" class="input" placeholder="+54 9 11..." />
+          </div>
+          <div>
+            <label class="label" for="cust-email">Email</label>
+            <input id="cust-email" type="email" class="input" placeholder="maria@email.com" />
+          </div>
+        </div>
+        <div>
+          <label class="label" for="cust-address">Dirección</label>
+          <input id="cust-address" type="text" class="input" placeholder="Av. Corrientes 1234" />
+        </div>
+        <div>
+          <label class="label" for="cust-notes">Notas</label>
+          <textarea id="cust-notes" rows="2" class="input resize-none" placeholder="Prefencias, alergias..."></textarea>
+        </div>
+        <div id="cust-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+        <div class="flex gap-3 pt-2">
+          <button type="submit" id="cust-submit" class="btn-primary flex-1">Guardar</button>
+          <button type="button" id="close-cust-btn" class="btn-secondary px-4">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</Dashboard>
+
+<script>
+  const modal = document.getElementById('customer-modal')!
+  const custError = document.getElementById('cust-error')!
+
+  function openModal(c?: any) {
+    custError.classList.add('hidden')
+    ;(document.getElementById('customer-form') as HTMLFormElement).reset()
+    document.getElementById('cust-modal-title')!.textContent = c ? 'Editar cliente' : 'Nuevo cliente'
+    if (c) {
+      ;(document.getElementById('cust-id') as HTMLInputElement).value = c.id
+      ;(document.getElementById('cust-name') as HTMLInputElement).value = c.full_name ?? ''
+      ;(document.getElementById('cust-phone') as HTMLInputElement).value = c.phone ?? ''
+      ;(document.getElementById('cust-email') as HTMLInputElement).value = c.email ?? ''
+      ;(document.getElementById('cust-address') as HTMLInputElement).value = c.address ?? ''
+      ;(document.getElementById('cust-notes') as HTMLTextAreaElement).value = c.notes ?? ''
+    } else {
+      ;(document.getElementById('cust-id') as HTMLInputElement).value = ''
+    }
+    modal.classList.remove('hidden')
+  }
+
+  const closeModal = () => modal.classList.add('hidden')
+  document.getElementById('open-customer-modal')?.addEventListener('click', () => openModal())
+  document.getElementById('close-cust-modal')?.addEventListener('click', closeModal)
+  document.getElementById('close-cust-btn')?.addEventListener('click', closeModal)
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal() })
+  document.querySelectorAll('.edit-customer-btn').forEach(btn => {
+    btn.addEventListener('click', () => openModal(JSON.parse((btn as HTMLElement).dataset.customer!)))
+  })
+
+  document.getElementById('customer-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    custError.classList.add('hidden')
+    const submit = document.getElementById('cust-submit')!
+    submit.setAttribute('disabled', 'true')
+    submit.textContent = 'Guardando…'
+
+    const custId = (document.getElementById('cust-id') as HTMLInputElement).value
+    const payload = {
+      full_name: (document.getElementById('cust-name') as HTMLInputElement).value,
+      phone: (document.getElementById('cust-phone') as HTMLInputElement).value || null,
+      email: (document.getElementById('cust-email') as HTMLInputElement).value || null,
+      address: (document.getElementById('cust-address') as HTMLInputElement).value || null,
+      notes: (document.getElementById('cust-notes') as HTMLTextAreaElement).value || null,
+    }
+
+    try {
+      const res = await fetch(custId ? `/api/customers/${custId}` : '/api/customers', {
+        method: custId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (!data.success) {
+        custError.textContent = data.error ?? 'Error al guardar.'
+        custError.classList.remove('hidden')
+        return
+      }
+      location.reload()
+    } catch {
+      custError.textContent = 'Error de conexión.'
+      custError.classList.remove('hidden')
+    } finally {
+      submit.removeAttribute('disabled')
+      submit.textContent = 'Guardar'
+    }
+  })
+</script>

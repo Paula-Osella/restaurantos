@@ -1,0 +1,226 @@
+---
+import Dashboard from '@/layouts/Dashboard.astro'
+
+const { businessId, supabase } = Astro.locals
+
+const [{ data: employees }, { data: branches }] = await Promise.all([
+  supabase
+    .from('employees')
+    .select('*, branches(id, name)')
+    .eq('business_id', businessId)
+    .order('full_name'),
+  supabase
+    .from('branches')
+    .select('id, name')
+    .eq('business_id', businessId)
+    .eq('is_active', true),
+])
+
+const ROLE_LABEL: Record<string, string> = {
+  admin: 'Administrador', employee: 'Empleado', cashier: 'Cajero', cook: 'Cocinero',
+}
+const ROLE_CLASS: Record<string, string> = {
+  admin: 'badge-violet', employee: 'badge-blue', cashier: 'badge-amber', cook: 'badge-red',
+}
+---
+
+<Dashboard title="Empleados" activeSection="/restaurantos/dashboard/employees">
+  <div class="p-6 max-w-5xl mx-auto space-y-5">
+
+    <div class="page-header">
+      <h1 class="page-title">Empleados <span class="text-slate-400 font-normal text-base ml-1">({(employees ?? []).length})</span></h1>
+      <button id="open-employee-modal" class="btn-primary">+ Agregar empleado</button>
+    </div>
+
+    <div class="card overflow-hidden">
+      <table class="table-base">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Rol</th>
+            <th>Sucursal</th>
+            <th>Estado</th>
+            <th>Incorporación</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {(employees ?? []).length === 0 ? (
+            <tr><td colspan="7" class="text-center py-16 text-slate-400">No hay empleados registrados.</td></tr>
+          ) : (employees ?? []).map(emp => (
+            <tr>
+              <td>
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
+                    <span class="text-xs font-bold text-violet-700">{emp.full_name.charAt(0).toUpperCase()}</span>
+                  </div>
+                  <span class="font-medium text-slate-800">{emp.full_name}</span>
+                </div>
+              </td>
+              <td class="text-sm text-slate-500">{emp.email}</td>
+              <td>
+                <span class={`badge ${ROLE_CLASS[emp.role] ?? 'badge-slate'}`}>
+                  {ROLE_LABEL[emp.role] ?? emp.role}
+                </span>
+              </td>
+              <td class="text-sm text-slate-500">{(emp.branches as any)?.name ?? '—'}</td>
+              <td>
+                <span class={`badge ${emp.is_active ? 'badge-green' : 'badge-red'}`}>
+                  {emp.is_active ? 'Activo' : 'Inactivo'}
+                </span>
+              </td>
+              <td class="text-xs text-slate-400">
+                {emp.hired_at ? new Date(emp.hired_at).toLocaleDateString('es-AR') : '—'}
+              </td>
+              <td>
+                <button
+                  class="edit-emp-btn text-xs text-violet-600 border border-violet-200 px-2.5 py-1 rounded-lg hover:bg-violet-50 transition-colors"
+                  data-employee={JSON.stringify({ id: emp.id, full_name: emp.full_name, email: emp.email, role: emp.role, branch_id: emp.branch_id, is_active: emp.is_active, hourly_rate: emp.hourly_rate, hired_at: emp.hired_at })}
+                >
+                  Editar
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal empleado -->
+  <div id="employee-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <h2 id="emp-modal-title" class="text-base font-semibold">Nuevo empleado</h2>
+        <button id="close-emp-modal" class="text-slate-400 hover:text-slate-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <form id="employee-form" class="p-6 space-y-4">
+        <input type="hidden" id="emp-id" />
+        <div>
+          <label class="label" for="emp-name">Nombre completo *</label>
+          <input id="emp-name" type="text" required class="input" placeholder="Juan García" />
+        </div>
+        <div>
+          <label class="label" for="emp-email">Email *</label>
+          <input id="emp-email" type="email" required class="input" placeholder="juan@email.com" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label" for="emp-role">Rol *</label>
+            <select id="emp-role" class="input">
+              <option value="employee">Empleado</option>
+              <option value="cashier">Cajero</option>
+              <option value="cook">Cocinero</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+          <div>
+            <label class="label" for="emp-branch">Sucursal</label>
+            <select id="emp-branch" class="input">
+              <option value="">Sin asignar</option>
+              {(branches ?? []).map(b => <option value={b.id}>{b.name}</option>)}
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label" for="emp-rate">Tarifa por hora (ARS)</label>
+            <input id="emp-rate" type="number" min="0" class="input" placeholder="0.00" />
+          </div>
+          <div>
+            <label class="label" for="emp-hired">Fecha de ingreso</label>
+            <input id="emp-hired" type="date" class="input" />
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <input id="emp-active" type="checkbox" checked class="w-4 h-4 rounded border-slate-300 text-violet-600" />
+          <label for="emp-active" class="text-sm text-slate-700">Empleado activo</label>
+        </div>
+        <div id="emp-error" class="hidden text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+        <div class="flex gap-3 pt-2">
+          <button type="submit" id="emp-submit" class="btn-primary flex-1">Guardar</button>
+          <button type="button" id="close-emp-btn" class="btn-secondary px-4">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</Dashboard>
+
+<script>
+  const modal = document.getElementById('employee-modal')!
+  const empError = document.getElementById('emp-error')!
+
+  function openModal(emp?: any) {
+    empError.classList.add('hidden')
+    ;(document.getElementById('employee-form') as HTMLFormElement).reset()
+    document.getElementById('emp-modal-title')!.textContent = emp ? 'Editar empleado' : 'Nuevo empleado'
+    if (emp) {
+      ;(document.getElementById('emp-id') as HTMLInputElement).value = emp.id
+      ;(document.getElementById('emp-name') as HTMLInputElement).value = emp.full_name ?? ''
+      ;(document.getElementById('emp-email') as HTMLInputElement).value = emp.email ?? ''
+      ;(document.getElementById('emp-role') as HTMLSelectElement).value = emp.role ?? 'employee'
+      ;(document.getElementById('emp-branch') as HTMLSelectElement).value = emp.branch_id ?? ''
+      ;(document.getElementById('emp-rate') as HTMLInputElement).value = emp.hourly_rate ?? ''
+      ;(document.getElementById('emp-hired') as HTMLInputElement).value = emp.hired_at ?? ''
+      ;(document.getElementById('emp-active') as HTMLInputElement).checked = emp.is_active ?? true
+    } else {
+      ;(document.getElementById('emp-id') as HTMLInputElement).value = ''
+    }
+    modal.classList.remove('hidden')
+  }
+
+  const closeModal = () => modal.classList.add('hidden')
+  document.getElementById('open-employee-modal')?.addEventListener('click', () => openModal())
+  document.getElementById('close-emp-modal')?.addEventListener('click', closeModal)
+  document.getElementById('close-emp-btn')?.addEventListener('click', closeModal)
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal() })
+
+  document.querySelectorAll('.edit-emp-btn').forEach(btn => {
+    btn.addEventListener('click', () => openModal(JSON.parse((btn as HTMLElement).dataset.employee!)))
+  })
+
+  document.getElementById('employee-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    empError.classList.add('hidden')
+    const submit = document.getElementById('emp-submit')!
+    submit.setAttribute('disabled', 'true')
+    submit.textContent = 'Guardando…'
+
+    const empId = (document.getElementById('emp-id') as HTMLInputElement).value
+    const payload = {
+      full_name: (document.getElementById('emp-name') as HTMLInputElement).value,
+      email: (document.getElementById('emp-email') as HTMLInputElement).value,
+      role: (document.getElementById('emp-role') as HTMLSelectElement).value,
+      branch_id: (document.getElementById('emp-branch') as HTMLSelectElement).value || null,
+      hourly_rate: parseFloat((document.getElementById('emp-rate') as HTMLInputElement).value) || null,
+      hired_at: (document.getElementById('emp-hired') as HTMLInputElement).value || null,
+      is_active: (document.getElementById('emp-active') as HTMLInputElement).checked,
+    }
+
+    try {
+      const res = await fetch(empId ? `/api/employees/${empId}` : '/api/employees', {
+        method: empId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (!data.success) {
+        empError.textContent = data.error ?? 'Error al guardar.'
+        empError.classList.remove('hidden')
+        return
+      }
+      location.reload()
+    } catch {
+      empError.textContent = 'Error de conexión.'
+      empError.classList.remove('hidden')
+    } finally {
+      submit.removeAttribute('disabled')
+      submit.textContent = 'Guardar'
+    }
+  })
+</script>

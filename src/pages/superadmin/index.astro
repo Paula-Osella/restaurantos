@@ -1,0 +1,140 @@
+---
+import SuperAdmin from '@/layouts/SuperAdmin.astro'
+
+const { supabase } = Astro.locals
+
+const [
+  { count: totalBusinesses },
+  { count: activeBusinesses },
+  { count: trialBusinesses },
+  { count: suspendedBusinesses },
+  { data: recentBusinesses },
+  { data: recentInvoices },
+] = await Promise.all([
+  supabase.from('businesses').select('*', { count: 'exact', head: true }),
+  supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+  supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('status', 'trial'),
+  supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('status', 'suspended'),
+  supabase
+    .from('businesses')
+    .select('id, name, status, subscription_status, created_at, plans(name)')
+    .order('created_at', { ascending: false })
+    .limit(8),
+  supabase
+    .from('invoices')
+    .select('id, amount, currency, status, created_at, businesses(name)')
+    .eq('status', 'paid')
+    .order('created_at', { ascending: false })
+    .limit(6),
+])
+
+const totalRevenue = (recentInvoices ?? []).reduce((s, i) => s + i.amount, 0)
+
+const formatARS = (n: number) =>
+  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(n)
+
+const STATUS_LABEL: Record<string, string> = {
+  active: 'Activa', trial: 'Prueba', suspended: 'Suspendida', cancelled: 'Cancelada',
+}
+const STATUS_CLASS: Record<string, string> = {
+  active: 'text-emerald-400', trial: 'text-violet-400',
+  suspended: 'text-amber-400', cancelled: 'text-red-400',
+}
+---
+
+<SuperAdmin title="Super Admin" activeSection="/superadmin">
+  <div class="p-6 space-y-6 max-w-6xl mx-auto">
+
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-bold text-white">Panel de Control</h1>
+        <p class="text-sm text-slate-500 mt-0.5">Visión global de la plataforma RestaurantOS</p>
+      </div>
+      <div class="flex items-center gap-2 text-xs text-slate-500 bg-slate-800 px-3 py-1.5 rounded-lg">
+        <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full pulse-dot"></span>
+        Sistema operativo
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {[
+        { label: 'Total empresas',   value: totalBusinesses ?? 0,   color: 'text-white'          },
+        { label: 'Activas',          value: activeBusinesses ?? 0,  color: 'text-emerald-400'    },
+        { label: 'En prueba',        value: trialBusinesses ?? 0,   color: 'text-violet-400'     },
+        { label: 'Suspendidas',      value: suspendedBusinesses ?? 0, color: 'text-amber-400'    },
+      ].map(stat => (
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">{stat.label}</p>
+          <p class={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
+        </div>
+      ))}
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+      <!-- Empresas recientes -->
+      <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+          <h2 class="text-sm font-semibold text-white">Empresas recientes</h2>
+          <a href="/superadmin/businesses" class="text-xs text-violet-400 hover:text-violet-300 transition-colors">Ver todas →</a>
+        </div>
+        <table class="w-full text-sm">
+          <thead class="border-b border-slate-800">
+            <tr>
+              <th class="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Empresa</th>
+              <th class="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Plan</th>
+              <th class="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Estado</th>
+              <th class="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Registrada</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800">
+            {(recentBusinesses ?? []).map(biz => (
+              <tr class="hover:bg-slate-800/50 transition-colors">
+                <td class="px-5 py-3.5">
+                  <a href={`/superadmin/businesses/${biz.id}`} class="font-medium text-white hover:text-violet-300 transition-colors">
+                    {biz.name}
+                  </a>
+                </td>
+                <td class="px-5 py-3.5 text-slate-400 text-xs">{(biz.plans as any)?.name ?? '—'}</td>
+                <td class="px-5 py-3.5">
+                  <span class={`text-xs font-medium ${STATUS_CLASS[biz.status] ?? 'text-slate-400'}`}>
+                    ● {STATUS_LABEL[biz.status] ?? biz.status}
+                  </span>
+                </td>
+                <td class="px-5 py-3.5 text-xs text-slate-500">
+                  {new Date(biz.created_at).toLocaleDateString('es-AR')}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagos recientes -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-800">
+          <h2 class="text-sm font-semibold text-white">Pagos recientes</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Total: {formatARS(totalRevenue)}</p>
+        </div>
+        <div class="divide-y divide-slate-800">
+          {(recentInvoices ?? []).length === 0 ? (
+            <p class="text-sm text-slate-500 text-center py-10">Sin pagos aún</p>
+          ) : (recentInvoices ?? []).map(inv => (
+            <div class="px-5 py-3.5 flex items-center justify-between">
+              <div>
+                <p class="text-sm font-medium text-white truncate max-w-[130px]">
+                  {(inv.businesses as any)?.name ?? '—'}
+                </p>
+                <p class="text-xs text-slate-500 mt-0.5">
+                  {new Date(inv.created_at).toLocaleDateString('es-AR')}
+                </p>
+              </div>
+              <span class="text-sm font-bold text-emerald-400">{formatARS(inv.amount)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+</SuperAdmin>

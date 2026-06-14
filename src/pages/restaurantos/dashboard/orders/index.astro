@@ -1,0 +1,132 @@
+---
+import Dashboard from '@/layouts/Dashboard.astro'
+
+const { businessId, supabase } = Astro.locals
+
+const page = parseInt(Astro.url.searchParams.get('page') ?? '1')
+const status = Astro.url.searchParams.get('status') ?? ''
+const pageSize = 25
+
+let query = supabase
+  .from('orders')
+  .select('*, customers(full_name, phone), branches(name), order_items(id)', { count: 'exact' })
+  .eq('business_id', businessId)
+  .order('created_at', { ascending: false })
+  .range((page - 1) * pageSize, page * pageSize - 1)
+
+if (status) query = query.eq('status', status)
+
+const { data: orders, count } = await query
+const totalPages = Math.ceil((count ?? 0) / pageSize)
+
+const formatARS = (n: number) =>
+  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(n)
+
+const STATUS_LABEL: Record<string, string> = {
+  pending: 'Pendiente', confirmed: 'Confirmado', preparing: 'En cocina',
+  ready: 'Listo', delivered: 'Entregado', cancelled: 'Cancelado',
+}
+const STATUS_CLASS: Record<string, string> = {
+  pending: 'badge-slate', confirmed: 'badge-blue', preparing: 'badge-amber',
+  ready: 'badge-violet', delivered: 'badge-green', cancelled: 'badge-red',
+}
+---
+
+<Dashboard title="Pedidos" activeSection="/restaurantos/dashboard/orders">
+  <div class="p-6 max-w-6xl mx-auto space-y-5">
+
+    <div class="page-header">
+      <h1 class="page-title">Pedidos</h1>
+      <a href="/pos" class="btn-primary">+ Nuevo pedido</a>
+    </div>
+
+    <!-- Filtros de estado -->
+    <div class="flex flex-wrap gap-2">
+      {['', 'pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled'].map(s => (
+        <a
+          href={`/restaurantos/dashboard/orders${s ? `?status=${s}` : ''}`}
+          class={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+            status === s
+              ? 'bg-violet-600 text-white border-violet-600'
+              : 'bg-white text-slate-600 border-slate-200 hover:border-violet-300 hover:text-violet-700'
+          }`}
+        >
+          {s === '' ? 'Todos' : STATUS_LABEL[s]}
+        </a>
+      ))}
+    </div>
+
+    <!-- Tabla -->
+    <div class="card overflow-hidden">
+      <table class="table-base">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Fecha</th>
+            <th>Cliente</th>
+            <th>Items</th>
+            <th>Estado</th>
+            <th>Pago</th>
+            <th class="text-right">Total</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {(orders ?? []).length === 0 ? (
+            <tr>
+              <td colspan="8" class="text-center py-16 text-slate-400">
+                No hay pedidos{status ? ` con estado "${STATUS_LABEL[status]}"` : ''}
+              </td>
+            </tr>
+          ) : (orders ?? []).map(order => (
+            <tr>
+              <td class="font-mono font-semibold text-slate-800">
+                #{order.id.slice(-6).toUpperCase()}
+              </td>
+              <td class="text-xs text-slate-500">
+                {new Date(order.created_at).toLocaleString('es-AR', {
+                  day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+                })}
+              </td>
+              <td>{(order.customers as any)?.full_name ?? <span class="text-slate-400 text-xs">Sin cliente</span>}</td>
+              <td class="text-slate-500">{(order.order_items as any[])?.length ?? 0} items</td>
+              <td>
+                <span class={STATUS_CLASS[order.status] ?? 'badge-slate'} style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:3px 10px;border-radius:9999px;">
+                  {STATUS_LABEL[order.status] ?? order.status}
+                </span>
+              </td>
+              <td class="text-xs text-slate-500 capitalize">
+                {order.payment_method ?? '—'}
+              </td>
+              <td class="text-right font-semibold text-slate-900">{formatARS(order.total)}</td>
+              <td>
+                <a
+                  href={`/restaurantos/dashboard/orders/${order.id}`}
+                  class="text-xs text-violet-600 hover:text-violet-800 font-medium"
+                >
+                  Ver →
+                </a>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginación -->
+    {totalPages > 1 && (
+      <div class="flex items-center justify-between text-sm text-slate-500">
+        <span>{count} pedidos en total</span>
+        <div class="flex gap-2">
+          {page > 1 && (
+            <a href={`?page=${page - 1}${status ? `&status=${status}` : ''}`} class="btn-secondary py-1.5 px-3 text-xs">← Anterior</a>
+          )}
+          <span class="px-3 py-1.5 bg-slate-100 rounded-lg text-xs">{page} / {totalPages}</span>
+          {page < totalPages && (
+            <a href={`?page=${page + 1}${status ? `&status=${status}` : ''}`} class="btn-secondary py-1.5 px-3 text-xs">Siguiente →</a>
+          )}
+        </div>
+      </div>
+    )}
+  </div>
+</Dashboard>

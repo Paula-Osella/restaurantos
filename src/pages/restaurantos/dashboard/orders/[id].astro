@@ -1,0 +1,211 @@
+---
+import Dashboard from '@/layouts/Dashboard.astro'
+
+const { businessId, supabase, userRole } = Astro.locals
+const { id } = Astro.params
+
+const { data: order } = await supabase
+  .from('orders')
+  .select('*, customers(full_name, phone, email), branches(name), order_items(*, products(name, price, image_url))')
+  .eq('id', id!)
+  .eq('business_id', businessId)
+  .single()
+
+if (!order) return Astro.redirect('/restaurantos/dashboard/orders')
+
+const formatARS = (n: number) =>
+  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(n)
+
+const STATUS_LABEL: Record<string, string> = {
+  pending: 'Pendiente', confirmed: 'Confirmado', preparing: 'En cocina',
+  ready: 'Listo', delivered: 'Entregado', cancelled: 'Cancelado',
+}
+const NEXT_STATUS: Record<string, { label: string; status: string }> = {
+  pending: { label: 'Confirmar pedido', status: 'confirmed' },
+  confirmed: { label: 'Pasar a cocina', status: 'preparing' },
+  preparing: { label: 'Marcar como listo', status: 'ready' },
+  ready: { label: 'Marcar entregado', status: 'delivered' },
+}
+const next = NEXT_STATUS[order.status]
+---
+
+<Dashboard title={`Pedido #${order.id.slice(-6).toUpperCase()}`} activeSection="/restaurantos/dashboard/orders">
+  <div class="p-6 max-w-3xl mx-auto space-y-5">
+
+    <div class="flex items-center gap-3">
+      <a href="/restaurantos/dashboard/orders" class="text-slate-400 hover:text-slate-600 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+        </svg>
+      </a>
+      <h1 class="page-title">Pedido #{order.id.slice(-6).toUpperCase()}</h1>
+      <span class={`badge ${
+        order.status === 'delivered' ? 'badge-green' :
+        order.status === 'cancelled' ? 'badge-red' :
+        order.status === 'preparing' ? 'badge-amber' :
+        order.status === 'ready' ? 'badge-violet' : 'badge-blue'
+      }`}>
+        {STATUS_LABEL[order.status]}
+      </span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+      <!-- Info del pedido -->
+      <div class="card-p space-y-3">
+        <h2 class="text-sm font-semibold text-slate-700">Información</h2>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-slate-500">Fecha</span>
+            <span>{new Date(order.created_at).toLocaleString('es-AR')}</span>
+          </div>
+          {order.table_number && (
+            <div class="flex justify-between">
+              <span class="text-slate-500">Mesa</span>
+              <span>{order.table_number}</span>
+            </div>
+          )}
+          {order.payment_method && (
+            <div class="flex justify-between">
+              <span class="text-slate-500">Método de pago</span>
+              <span class="capitalize">{order.payment_method}</span>
+            </div>
+          )}
+          {order.is_delivery && (
+            <div class="flex justify-between">
+              <span class="text-slate-500">Tipo</span>
+              <span class="badge-blue badge">🛵 Delivery</span>
+            </div>
+          )}
+          {order.notes && (
+            <div class="pt-2 border-t border-slate-100">
+              <span class="text-slate-500 block mb-1">Notas</span>
+              <p class="text-slate-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs">{order.notes}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <!-- Cliente -->
+      <div class="card-p space-y-3">
+        <h2 class="text-sm font-semibold text-slate-700">Cliente</h2>
+        {order.customers ? (
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between">
+              <span class="text-slate-500">Nombre</span>
+              <span>{(order.customers as any).full_name}</span>
+            </div>
+            {(order.customers as any).phone && (
+              <div class="flex justify-between">
+                <span class="text-slate-500">Teléfono</span>
+                <a href={`tel:${(order.customers as any).phone}`} class="text-violet-600 hover:underline">
+                  {(order.customers as any).phone}
+                </a>
+              </div>
+            )}
+            {(order.customers as any).email && (
+              <div class="flex justify-between">
+                <span class="text-slate-500">Email</span>
+                <span class="text-xs">{(order.customers as any).email}</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p class="text-sm text-slate-400">Sin cliente asignado</p>
+        )}
+      </div>
+    </div>
+
+    <!-- Items -->
+    <div class="card overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100">
+        <h2 class="text-sm font-semibold text-slate-700">Productos</h2>
+      </div>
+      <table class="table-base">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th class="text-center">Cantidad</th>
+            <th class="text-right">Precio unit.</th>
+            <th class="text-right">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          {(order.order_items as any[]).map(item => (
+            <tr>
+              <td>
+                <p class="font-medium text-slate-800">{item.products?.name}</p>
+                {item.notes && <p class="text-xs text-amber-600 mt-0.5">⚠ {item.notes}</p>}
+              </td>
+              <td class="text-center font-semibold">{item.quantity}</td>
+              <td class="text-right text-slate-600">{formatARS(item.unit_price)}</td>
+              <td class="text-right font-semibold">{formatARS(item.subtotal)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div class="px-5 py-4 border-t border-slate-100 space-y-1.5">
+        <div class="flex justify-between text-sm text-slate-500">
+          <span>Subtotal</span><span>{formatARS(order.subtotal)}</span>
+        </div>
+        {order.discount > 0 && (
+          <div class="flex justify-between text-sm text-emerald-600">
+            <span>Descuento</span><span>−{formatARS(order.discount)}</span>
+          </div>
+        )}
+        {order.tax > 0 && (
+          <div class="flex justify-between text-sm text-slate-500">
+            <span>Impuestos</span><span>{formatARS(order.tax)}</span>
+          </div>
+        )}
+        <div class="flex justify-between text-base font-bold text-slate-900 pt-2 border-t border-slate-200">
+          <span>Total</span><span>{formatARS(order.total)}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Acciones -->
+    {next && userRole !== 'cook' && (
+      <div class="flex gap-3">
+        <button
+          id="advance-status"
+          data-order-id={order.id}
+          data-new-status={next.status}
+          class="btn-primary flex-1 py-3"
+        >
+          {next.label}
+        </button>
+        {order.status !== 'cancelled' && (
+          <button
+            id="cancel-order"
+            data-order-id={order.id}
+            class="btn-danger px-6 py-3"
+          >
+            Cancelar
+          </button>
+        )}
+      </div>
+    )}
+  </div>
+</Dashboard>
+
+<script>
+  async function patchOrder(orderId: string, status: string) {
+    const res = await fetch(`/api/orders/${orderId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+    const data = await res.json()
+    if (data.success) location.reload()
+    else alert(data.error ?? 'Error al actualizar el pedido.')
+  }
+
+  document.getElementById('advance-status')?.addEventListener('click', function() {
+    patchOrder(this.dataset.orderId!, this.dataset.newStatus!)
+  })
+
+  document.getElementById('cancel-order')?.addEventListener('click', function() {
+    if (confirm('¿Cancelar este pedido?')) patchOrder(this.dataset.orderId!, 'cancelled')
+  })
+</script>

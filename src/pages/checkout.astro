@@ -1,0 +1,267 @@
+---
+import Base from '@/layouts/Base.astro'
+
+const plans = [
+    {
+        id: 'basico',
+        name: 'Básico',
+        price: 1000,
+        priceDisplay: '$1.000',
+        description: 'Para emprendimientos pequeños.',
+        features: ['Hasta 50 productos', 'Hasta 2 empleados', '1 sucursal', 'POS completo', 'Pantalla de cocina', 'Reportes básicos'],
+    },
+    {
+        id: 'profesional',
+        name: 'Profesional',
+        price: 2000,
+        priceDisplay: '$2.000',
+        description: 'Para negocios en crecimiento.',
+        featured: true,
+        badge: 'Más popular',
+        features: ['Productos ilimitados', 'Hasta 10 empleados', 'Hasta 3 sucursales', 'POS completo', 'Pantalla de cocina', 'Reportes avanzados', 'Inventario completo', 'Alertas de stock'],
+    },
+    {
+        id: 'premium',
+        name: 'Premium',
+        price: 3000,
+        priceDisplay: '$3.000',
+        description: 'Para cadenas y franquicias.',
+        features: ['Productos ilimitados', 'Empleados ilimitados', 'Sucursales ilimitadas', 'POS completo', 'Pantalla de cocina', 'Estadísticas avanzadas', 'Inventario completo', 'Acceso a API', 'Soporte prioritario 24/7'],
+    },
+]
+---
+
+<Base title="Elegí tu plan — RestaurantOS">
+    <div class="min-h-screen bg-slate-950 text-white">
+
+        <!-- Nav -->
+        <header class="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-white/5">
+        <nav class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+            <a href="/restaurantos" class="flex items-center gap-1.5 text-slate-500 hover:text-slate-300 text-xs transition-colors mr-2">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                Volver
+            </a>
+            <div class="w-8 h-8 bg-violet-600 rounded-xl flex items-center justify-center text-base">🍔</div>
+            <span class="font-bold text-white">RestaurantOS</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-slate-500">
+            <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+            Pago seguro con Mercado Pago
+            </div>
+        </nav>
+        </header>
+
+        <!-- Content -->
+        <section class="max-w-5xl mx-auto px-6 pt-16 pb-28">
+
+        <div class="text-center mb-14">
+            <p class="text-violet-400 text-sm font-medium mb-3">Suscripción mensual</p>
+            <h1 class="text-4xl font-bold text-white mb-3">Elegí tu plan</h1>
+            <p class="text-slate-400 max-w-md mx-auto text-sm">
+            Seleccioná el plan que mejor se adapta a tu negocio y pagá de forma segura con Mercado Pago.
+            </p>
+        </div>
+
+        <!-- Plans grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10" id="plans-grid">
+            {plans.map(plan => (
+            <button
+                type="button"
+                data-plan-id={plan.id}
+                data-plan-name={plan.name}
+                data-plan-price={plan.price}
+                class={`plan-card relative flex flex-col text-left rounded-2xl border p-7 transition-all cursor-pointer focus:outline-none ${
+                plan.featured
+                    ? 'bg-violet-600/10 border-violet-500'
+                    : 'bg-slate-900 border-white/10 hover:border-white/25'
+                }`}
+            >
+                {plan.badge && (
+                <div class="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10">
+                    <span class="bg-violet-600 text-white text-xs font-bold px-4 py-1 rounded-full whitespace-nowrap">
+                    {plan.badge}
+                    </span>
+                </div>
+                )}
+
+                <!-- Selected indicator -->
+                <div class="selected-ring hidden absolute inset-0 rounded-2xl border-2 border-violet-400 pointer-events-none"></div>
+                <div class="selected-check hidden absolute top-4 right-4 w-6 h-6 bg-violet-500 rounded-full items-center justify-center">
+                <svg class="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+                </div>
+
+                <div class="mb-4">
+                <h3 class="text-base font-bold text-white mb-1">{plan.name}</h3>
+                <p class="text-xs text-slate-500">{plan.description}</p>
+                </div>
+
+                <div class="mb-6">
+                <div class="flex items-baseline gap-1">
+                    <span class="text-3xl font-bold text-white">{plan.priceDisplay}</span>
+                    <span class="text-slate-500 text-sm">/mes</span>
+                </div>
+                <p class="text-xs text-emerald-400 mt-1">Plan anual: 2 meses gratis</p>
+                </div>
+
+                <ul class="space-y-2 flex-1">
+                {plan.features.map(f => (
+                    <li class="flex items-center gap-2 text-xs text-slate-400">
+                    <svg class="w-3 h-3 text-emerald-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                    </svg>
+                    {f}
+                    </li>
+                ))}
+                </ul>
+            </button>
+            ))}
+        </div>
+
+        <!-- Summary + CTA -->
+        <div id="checkout-bar" class="hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-white/10 px-6 py-4">
+            <div class="max-w-5xl mx-auto flex items-center justify-between gap-4">
+            <div>
+                <p class="text-xs text-slate-500 mb-0.5">Plan seleccionado</p>
+                <p class="text-white font-semibold text-sm">
+                <span id="bar-plan-name">—</span>
+                <span class="text-slate-400 font-normal"> · </span>
+                <span id="bar-plan-price" class="text-violet-400 font-bold">—</span>
+                <span class="text-slate-500 text-xs font-normal">/mes</span>
+                </p>
+            </div>
+            <button
+                id="pay-btn"
+                type="button"
+                class="flex items-center gap-2 px-7 py-3 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition-all active:scale-95 shadow-xl shadow-violet-900/40 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                <span id="pay-btn-text">Pagar con Mercado Pago</span>
+                <svg id="pay-spinner" class="hidden w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                </svg>
+                <svg id="pay-arrow" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                </svg>
+            </button>
+            </div>
+        </div>
+
+        <!-- Trust badges -->
+        <div class="flex flex-wrap items-center justify-center gap-6 text-xs text-slate-600 mt-4">
+            <span class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
+            Pago 100% seguro
+            </span>
+            <span class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+            </svg>
+            Tarjeta de crédito, débito o saldo MP
+            </span>
+            <span class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            Cancelá cuando quieras
+            </span>
+        </div>
+        </section>
+    </div>
+</Base>
+
+<script>
+    let selectedPlan: { id: string; name: string; price: number } | null = null
+
+    const cards = document.querySelectorAll<HTMLButtonElement>('.plan-card')
+    const checkoutBar = document.getElementById('checkout-bar')!
+    const barPlanName = document.getElementById('bar-plan-name')!
+    const barPlanPrice = document.getElementById('bar-plan-price')!
+    const payBtn = document.getElementById('pay-btn') as HTMLButtonElement
+    const payBtnText = document.getElementById('pay-btn-text')!
+    const paySpinner = document.getElementById('pay-spinner')!
+    const payArrow = document.getElementById('pay-arrow')!
+
+    cards.forEach(card => {
+        card.addEventListener('click', () => {
+        // Deselect all
+        cards.forEach(c => {
+            c.querySelector('.selected-ring')?.classList.add('hidden')
+            c.querySelector('.selected-check')?.classList.add('hidden')
+            c.querySelector('.selected-check')?.classList.remove('flex')
+        })
+
+        // Select this one
+        card.querySelector('.selected-ring')?.classList.remove('hidden')
+        const check = card.querySelector('.selected-check')
+        check?.classList.remove('hidden')
+        check?.classList.add('flex')
+
+        selectedPlan = {
+            id: card.dataset.planId!,
+            name: card.dataset.planName!,
+            price: Number(card.dataset.planPrice),
+        }
+
+        barPlanName.textContent = selectedPlan.name
+        barPlanPrice.textContent = `$${selectedPlan.price.toLocaleString('es-AR')}`
+        checkoutBar.classList.remove('hidden')
+        })
+    })
+
+    payBtn.addEventListener('click', async () => {
+        if (!selectedPlan) return
+
+        payBtnText.textContent = 'Procesando...'
+        paySpinner.classList.remove('hidden')
+        payArrow.classList.add('hidden')
+        payBtn.disabled = true
+
+        // Intentar obtener el email del usuario logueado desde Supabase
+        let userEmail: string | undefined
+        try {
+        const { createClient } = await import('@supabase/supabase-js')
+        const supabase = createClient(
+            import.meta.env.PUBLIC_SUPABASE_URL,
+            import.meta.env.PUBLIC_SUPABASE_ANON_KEY
+        )
+        const { data: { user } } = await supabase.auth.getUser()
+        userEmail = user?.email ?? undefined
+        } catch (_) {}
+
+        try {
+        const res = await fetch('/api/create-preference', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ planId: selectedPlan.id, userEmail }),
+        })
+
+        const data = await res.json()
+
+        if (data.init_point) {
+            window.location.href = data.init_point
+        } else {
+            throw new Error('No se recibió init_point')
+        }
+        } catch (err) {
+        console.error(err)
+        payBtnText.textContent = 'Error, intentá de nuevo'
+        paySpinner.classList.add('hidden')
+        payArrow.classList.remove('hidden')
+        payBtn.disabled = false
+        }
+    })
+</script>
+
+<style>
+    html { scroll-behavior: smooth; }
+    .plan-card:focus-visible { outline: 2px solid rgb(139 92 246); outline-offset: 2px; }
+</style>

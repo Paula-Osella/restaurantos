@@ -1,0 +1,185 @@
+---
+import Dashboard from '@/layouts/Dashboard.astro'
+
+const { businessId, supabase } = Astro.locals
+
+// Últimos 30 días por defecto
+const from = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+const to = new Date().toISOString()
+
+const { data: orders } = await supabase
+  .from('orders')
+  .select('id, total, status, created_at')
+  .eq('business_id', businessId)
+  .gte('created_at', from)
+  .lte('created_at', to)
+
+const delivered = (orders ?? []).filter(o => o.status === 'delivered')
+const totalRevenue = delivered.reduce((s, o) => s + o.total, 0)
+const avgTicket = delivered.length > 0 ? totalRevenue / delivered.length : 0
+const cancelRate = (orders ?? []).length > 0
+  ? ((orders ?? []).filter(o => o.status === 'cancelled').length / (orders ?? []).length) * 100
+  : 0
+
+// Ventas diarias
+const daily: Record<string, number> = {}
+delivered.forEach(o => {
+  const date = o.created_at.split('T')[0]
+  daily[date] = (daily[date] ?? 0) + o.total
+})
+const dailyData = Object.entries(daily).sort(([a], [b]) => a.localeCompare(b))
+
+// Top productos
+const { data: items } = await supabase
+  .from('order_items')
+  .select('product_id, quantity, subtotal, products(name), orders!inner(business_id, status)')
+  .eq('orders.business_id', businessId)
+  .eq('orders.status', 'delivered')
+  .gte('orders.created_at', from)
+
+const productMap = new Map<string, { name: string; qty: number; rev: number }>()
+;(items ?? []).forEach(item => {
+  const pid = item.product_id
+  const cur = productMap.get(pid) ?? { name: (item.products as any)?.name ?? '?', qty: 0, rev: 0 }
+  cur.qty += item.quantity
+  cur.rev += item.subtotal
+  productMap.set(pid, cur)
+})
+const topProducts = [...productMap.values()].sort((a, b) => b.rev - a.rev).slice(0, 10)
+
+const formatARS = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(n)
+---
+
+<Dashboard title="Reportes" activeSection="/restaurantos/dashboard/reports">
+  <div class="p-6 max-w-6xl mx-auto space-y-6">
+
+    <div class="page-header">
+      <h1 class="page-title">Reportes</h1>
+      <span class="text-sm text-slate-500">Últimos 30 días</span>
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="stat-card">
+        <span class="stat-label">Ingresos</span>
+        <span class="stat-value">{formatARS(totalRevenue)}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Pedidos entregados</span>
+        <span class="stat-value">{delivered.length}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Ticket promedio</span>
+        <span class="stat-value">{formatARS(avgTicket)}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Tasa de cancelación</span>
+        <span class="stat-value">{cancelRate.toFixed(1)}%</span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+      <!-- Gráfico de ventas diarias -->
+      <div class="lg:col-span-2 card-p">
+        <h2 class="text-sm font-semibold text-slate-700 mb-5">Ventas diarias (ARS)</h2>
+        {dailyData.length === 0 ? (
+          <div class="flex items-center justify-center h-40 text-slate-400 text-sm">Sin datos en el período</div>
+        ) : (
+          <div class="relative h-48">
+            <div id="bar-chart" class="flex items-end gap-1 h-full w-full" data-values={JSON.stringify(dailyData)}></div>
+          </div>
+        )}
+      </div>
+
+      <!-- Top productos -->
+      <div class="card-p">
+        <h2 class="text-sm font-semibold text-slate-700 mb-4">Top productos</h2>
+        {topProducts.length === 0 ? (
+          <p class="text-sm text-slate-400 text-center py-8">Sin datos</p>
+        ) : (
+          <div class="space-y-3">
+            {topProducts.map((p, i) => (
+              <div class="flex items-center gap-3">
+                <span class="text-xs font-bold text-slate-400 w-4 text-right flex-shrink-0">{i + 1}</span>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-slate-800 truncate">{p.name}</p>
+                  <div class="flex items-center gap-2 mt-0.5">
+                    <div class="flex-1 bg-slate-100 rounded-full h-1.5">
+                      <div
+                        class="bg-violet-500 h-1.5 rounded-full"
+                        style={`width: ${(p.rev / topProducts[0].rev * 100).toFixed(0)}%`}
+                      ></div>
+                    </div>
+                    <span class="text-xs text-slate-400 flex-shrink-0">{p.qty} uds.</span>
+                  </div>
+                </div>
+                <span class="text-xs font-semibold text-slate-700 flex-shrink-0">{formatARS(p.rev)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+
+    <!-- Tabla resumen semanal -->
+    <div class="card overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-slate-700">Detalle de ventas diarias</h2>
+        <button id="export-csv" class="btn-secondary text-xs py-1.5 px-3">↓ Exportar CSV</button>
+      </div>
+      <table class="table-base">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th class="text-right">Ventas (ARS)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {dailyData.length === 0 ? (
+            <tr><td colspan="2" class="text-center py-12 text-slate-400">Sin datos en el período.</td></tr>
+          ) : dailyData.map(([date, rev]) => (
+            <tr>
+              <td>{new Date(date + 'T00:00:00').toLocaleDateString('es-AR', { weekday:'short', day:'2-digit', month:'long' })}</td>
+              <td class="text-right font-semibold">{formatARS(rev)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</Dashboard>
+
+<script define:vars={{ dailyData }}>
+  // Bar chart simple con divs
+  const container = document.getElementById('bar-chart')
+  if (container && dailyData.length > 0) {
+    const maxVal = Math.max(...dailyData.map(([, v]) => v))
+    dailyData.forEach(([date, value]) => {
+      const pct = maxVal > 0 ? (value / maxVal * 100) : 0
+      const bar = document.createElement('div')
+      bar.className = 'flex-1 flex flex-col items-center gap-1 group cursor-default min-w-0'
+      bar.innerHTML = `
+        <div class="relative w-full flex items-end justify-center" style="height:calc(${pct}% + 4px); min-height: 4px;">
+          <div class="w-full bg-violet-500 group-hover:bg-violet-400 transition-colors rounded-t-sm" style="height:100%;"></div>
+          <div class="absolute -top-7 left-1/2 -translate-x-1/2 hidden group-hover:block bg-slate-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
+            $${value.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+          </div>
+        </div>
+        <span class="text-xs text-slate-400 rotate-45 origin-left truncate max-w-[20px]">${date.slice(5)}</span>
+      `
+      container.appendChild(bar)
+    })
+  }
+
+  // Exportar CSV
+  document.getElementById('export-csv')?.addEventListener('click', () => {
+    const rows = [['Fecha', 'Ventas (ARS)'], ...dailyData.map(([d, v]) => [d, v.toFixed(2)])]
+    const csv = rows.map(r => r.join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `ventas-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+  })
+</script>
