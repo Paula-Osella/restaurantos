@@ -29,11 +29,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 
   const profile = await getUserProfile(supabase, data.user.id)
-<<<<<<< HEAD
   const redirectTo = profile ? ROLE_HOME[profile.role] : '/restaurantos/dashboard'
-=======
-  const redirectTo = profile ? ROLE_HOME[profile.role] : '/dashboard'
->>>>>>> 94cdb9875810697bd9a7c4debdb08e95988df769
 
   return apiSuccess({ user: data.user?.id, redirectTo })
 }

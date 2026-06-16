@@ -2,28 +2,17 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, UserRole } from '@/types/database.types'
 
 export const ROLE_ROUTES: Record<UserRole, string[]> = {
-<<<<<<< HEAD
   superadmin: ['/superadmin', '/restaurantos/dashboard', '/pos', '/kitchen'],
   admin: ['/restaurantos/dashboard', '/pos', '/kitchen'],
   employee: ['/restaurantos/dashboard/orders', '/pos', '/kitchen'],
-=======
-  superadmin: ['/superadmin', '/dashboard', '/pos', '/kitchen'],
-  admin: ['/dashboard', '/pos', '/kitchen'],
-  employee: ['/dashboard/orders', '/pos', '/kitchen'],
->>>>>>> 94cdb9875810697bd9a7c4debdb08e95988df769
   cashier: ['/pos'],
   cook: ['/kitchen'],
 }
 
 export const ROLE_HOME: Record<UserRole, string> = {
   superadmin: '/superadmin',
-<<<<<<< HEAD
   admin: '/restaurantos/dashboard',
   employee: '/restaurantos/dashboard/orders',
-=======
-  admin: '/dashboard',
-  employee: '/dashboard/orders',
->>>>>>> 94cdb9875810697bd9a7c4debdb08e95988df769
   cashier: '/pos',
   cook: '/kitchen',
 }

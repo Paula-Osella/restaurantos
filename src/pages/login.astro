@@ -2,15 +2,9 @@
 import Base from '@/layouts/Base.astro'
 
 const { session } = Astro.locals
-<<<<<<< HEAD
 if (session) return Astro.redirect('/restaurantos/dashboard')
 
 const redirectTo = Astro.url.searchParams.get('redirect') ?? '/restaurantos/dashboard'
-=======
-if (session) return Astro.redirect('/dashboard')
-
-const redirectTo = Astro.url.searchParams.get('redirect') ?? '/dashboard'
->>>>>>> 94cdb9875810697bd9a7c4debdb08e95988df769
 ---
 
 <Base title="Iniciar sesión">
@@ -116,11 +110,7 @@ const redirectTo = Astro.url.searchParams.get('redirect') ?? '/dashboard'
 
     if (!form) { console.error('Form no encontrado'); return; }
 
-<<<<<<< HEAD
     var redirectTo = form.getAttribute('data-redirect') || '/restaurantos/dashboard'
-=======
-    var redirectTo = form.getAttribute('data-redirect') || '/dashboard'
->>>>>>> 94cdb9875810697bd9a7c4debdb08e95988df769
 
     var toggleBtn = document.getElementById('toggle-password')
     var passwordInput = document.getElementById('password')

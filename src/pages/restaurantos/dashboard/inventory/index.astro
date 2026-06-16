@@ -61,38 +61,35 @@ const lowCount = (inventory ?? []).filter(
                 {lowStockOnly ? 'No hay productos con stock bajo 🎉' : 'No hay ítems en inventario.'}
               </td>
             </tr>
-          ) : items.map(item => {
-            const isLow = item.low_stock_threshold !== null && item.quantity <= item.low_stock_threshold
-            return (
-              <tr>
-                <td class="font-medium text-slate-800">{(item.products as any)?.name}</td>
-                <td class="text-xs font-mono text-slate-400">{(item.products as any)?.sku ?? '—'}</td>
-                <td class="text-sm text-slate-500">{(item.branches as any)?.name ?? 'Principal'}</td>
-                <td class="text-center">
-                  <span class={`badge font-mono ${isLow ? 'badge-red' : item.quantity <= (item.low_stock_threshold ?? 0) * 1.5 ? 'badge-amber' : 'badge-green'}`}>
-                    {item.quantity}
-                  </span>
-                </td>
-                <td class="text-center text-sm text-slate-500">
-                  {item.low_stock_threshold !== null ? item.low_stock_threshold : '—'}
-                </td>
-                <td class="text-xs text-slate-400">
-                  {new Date(item.updated_at).toLocaleString('es-AR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}
-                </td>
-                <td>
-                  <button
-                    class="adjust-btn text-xs text-violet-600 hover:text-violet-800 border border-violet-200 px-2.5 py-1 rounded-lg hover:bg-violet-50 transition-colors"
-                    data-product-id={(item.products as any)?.id}
-                    data-product-name={(item.products as any)?.name}
-                    data-current={item.quantity}
-                    data-threshold={item.low_stock_threshold}
-                  >
-                    Ajustar
-                  </button>
-                </td>
-              </tr>
-            )
-          })}
+          ) : items.map(item => (
+            <tr>
+              <td class="font-medium text-slate-800">{(item.products as any)?.name}</td>
+              <td class="text-xs font-mono text-slate-400">{(item.products as any)?.sku ?? '—'}</td>
+              <td class="text-sm text-slate-500">{(item.branches as any)?.name ?? 'Principal'}</td>
+              <td class="text-center">
+                <span class={`badge font-mono ${item.low_stock_threshold !== null && item.quantity <= item.low_stock_threshold ? 'badge-red' : item.quantity <= (item.low_stock_threshold ?? 0) * 1.5 ? 'badge-amber' : 'badge-green'}`}>
+                  {item.quantity}
+                </span>
+              </td>
+              <td class="text-center text-sm text-slate-500">
+                {item.low_stock_threshold !== null ? item.low_stock_threshold : '—'}
+              </td>
+              <td class="text-xs text-slate-400">
+                {new Date(item.updated_at).toLocaleString('es-AR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}
+              </td>
+              <td>
+                <button
+                  class="adjust-btn text-xs text-violet-600 hover:text-violet-800 border border-violet-200 px-2.5 py-1 rounded-lg hover:bg-violet-50 transition-colors"
+                  data-product-id={(item.products as any)?.id}
+                  data-product-name={(item.products as any)?.name}
+                  data-current={item.quantity}
+                  data-threshold={item.low_stock_threshold}
+                >
+                  Ajustar
+                </button>
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
