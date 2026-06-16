@@ -14,11 +14,7 @@ const PUBLIC_ROUTES = [
 ]
 
 const SUPERADMIN_ROUTES = ['/superadmin']
-<<<<<<< HEAD
 const PROTECTED_ROUTES = ['/restaurantos/dashboard', '/pos', '/kitchen', '/restaurantos/billing', '/onboarding', '/superadmin']
-=======
-const PROTECTED_ROUTES = ['/dashboard', '/pos', '/kitchen', '/billing', '/onboarding', '/superadmin']
->>>>>>> 94cdb9875810697bd9a7c4debdb08e95988df769
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_ROUTES.some((r) => pathname === r || pathname.startsWith(r + '/'))
@@ -64,27 +60,16 @@ export const onRequest = defineMiddleware(async (context, next) => {
   locals.businessStatus = profile.businesses?.status ?? null
 
   if (isSuperAdminRoute(url.pathname) && profile.role !== 'superadmin') {
-<<<<<<< HEAD
     return redirect('/restaurantos/dashboard')
-=======
-    return redirect('/dashboard')
->>>>>>> 94cdb9875810697bd9a7c4debdb08e95988df769
   }
 
-  if (!isSuperAdminRoute(url.pathname) && url.pathname !== '/billing') {
+  if (!isSuperAdminRoute(url.pathname) && url.pathname !== '/restaurantos/billing') {
     const businessStatus = profile.businesses?.status
     if (businessStatus === 'suspended') {
-<<<<<<< HEAD
       return redirect('/restaurantos/billing?suspended=true')
     }
     if (businessStatus === 'cancelled') {
       return redirect('/restaurantos/billing?cancelled=true')
-=======
-      return redirect('/billing?suspended=true')
-    }
-    if (businessStatus === 'cancelled') {
-      return redirect('/billing?cancelled=true')
->>>>>>> 94cdb9875810697bd9a7c4debdb08e95988df769
     }
   }
 

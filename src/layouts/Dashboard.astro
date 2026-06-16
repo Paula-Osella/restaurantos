@@ -12,7 +12,6 @@ const { userRole, session } = Astro.locals
 const userName = session?.user?.user_metadata?.full_name ?? session?.user?.email ?? 'Usuario'
 
 const adminNav = [
-<<<<<<< HEAD
   { href: '/restaurantos/dashboard',           icon: 'grid',         label: 'Inicio'       },
   { href: '/restaurantos/dashboard/orders',    icon: 'receipt',      label: 'Pedidos'      },
   { href: '/restaurantos/dashboard/products',  icon: 'package',      label: 'Productos'    },
@@ -25,20 +24,6 @@ const adminNav = [
 
 const navItems = userRole === 'admin' || userRole === 'superadmin' ? adminNav : [
   { href: '/restaurantos/dashboard/orders', icon: 'receipt', label: 'Pedidos' },
-=======
-  { href: '/dashboard',           icon: 'grid',         label: 'Inicio'       },
-  { href: '/dashboard/orders',    icon: 'receipt',      label: 'Pedidos'      },
-  { href: '/dashboard/products',  icon: 'package',      label: 'Productos'    },
-  { href: '/dashboard/inventory', icon: 'archive',      label: 'Inventario'   },
-  { href: '/dashboard/customers', icon: 'users',        label: 'Clientes'     },
-  { href: '/dashboard/employees', icon: 'user-check',   label: 'Empleados'    },
-  { href: '/dashboard/reports',   icon: 'bar-chart-2',  label: 'Reportes'     },
-  { href: '/dashboard/settings',  icon: 'settings',     label: 'Configuración'},
-]
-
-const navItems = userRole === 'admin' || userRole === 'superadmin' ? adminNav : [
-  { href: '/dashboard/orders', icon: 'receipt', label: 'Pedidos' },
->>>>>>> 94cdb9875810697bd9a7c4debdb08e95988df769
 ]
 ---
 
@@ -50,11 +35,7 @@ const navItems = userRole === 'admin' || userRole === 'superadmin' ? adminNav : 
 
       <!-- Logo -->
       <div class="px-5 py-5 border-b border-slate-100">
-<<<<<<< HEAD
         <a href="/restaurantos/dashboard" class="flex items-center gap-2.5">
-=======
-        <a href="/dashboard" class="flex items-center gap-2.5">
->>>>>>> 94cdb9875810697bd9a7c4debdb08e95988df769
           <div class="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center">
             <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
@@ -94,11 +75,7 @@ const navItems = userRole === 'admin' || userRole === 'superadmin' ? adminNav : 
           </svg>
           Ir al POS
         </a>
-<<<<<<< HEAD
         <a href="/restaurantos/billing" class="nav-link">
-=======
-        <a href="/billing" class="nav-link">
->>>>>>> 94cdb9875810697bd9a7c4debdb08e95988df769
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
           </svg>
