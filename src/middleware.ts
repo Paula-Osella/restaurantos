@@ -38,6 +38,17 @@ export const onRequest = defineMiddleware(async (context, next) => {
   locals.session = session
   locals.user = session?.user ?? null
 
+  // Cargar el perfil/negocio para CUALQUIER request autenticada, no solo
+  // páginas protegidas. Los endpoints de /api (products, orders, etc.)
+  // también dependen de locals.businessId y locals.userRole.
+  const profile = session ? await getUserProfile(supabase, session.user.id) : null
+
+  if (profile) {
+    locals.businessId = profile.business_id
+    locals.userRole = profile.role
+    locals.businessStatus = profile.businesses?.status ?? null
+  }
+
   if (!isProtected(url.pathname)) {
     return next()
   }
@@ -48,16 +59,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return redirect(loginUrl.toString())
   }
 
-  const profile = await getUserProfile(supabase, session.user.id)
-
   if (!profile) {
     if (url.pathname === '/onboarding') return next()
     return redirect('/onboarding')
   }
-
-  locals.businessId = profile.business_id
-  locals.userRole = profile.role
-  locals.businessStatus = profile.businesses?.status ?? null
 
   if (isSuperAdminRoute(url.pathname) && profile.role !== 'superadmin') {
     return redirect('/restaurantos/dashboard')
